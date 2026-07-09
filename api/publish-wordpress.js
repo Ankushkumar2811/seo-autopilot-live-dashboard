@@ -1,4 +1,5 @@
 import { missing, readJson, requireMethod, sendJson } from "./_lib/http.js";
+import { getKeywordConfig, linkKeywordsInHtml } from "./_lib/seo-links.js";
 
 export default async function handler(req, res) {
   if (!requireMethod(req, res, ["POST"])) return;
@@ -11,6 +12,8 @@ export default async function handler(req, res) {
   if (!title || !content) return sendJson(res, 400, { ok: false, error: "title_and_content_required" });
 
   try {
+    const { keywords, linkUrl } = getKeywordConfig();
+    const linkedContent = linkKeywordsInHtml(content, keywords, linkUrl);
     let featuredMedia;
     if (imageUrl) {
       featuredMedia = await uploadMedia(imageUrl, title);
@@ -21,7 +24,7 @@ export default async function handler(req, res) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title,
-        content,
+        content: linkedContent,
         excerpt,
         status: status || process.env.WP_PUBLISH_MODE || "draft",
         categories: process.env.WP_DEFAULT_CATEGORY_ID ? [Number(process.env.WP_DEFAULT_CATEGORY_ID)] : undefined,
@@ -29,7 +32,7 @@ export default async function handler(req, res) {
       }),
     });
 
-    sendJson(res, 200, { ok: true, post });
+    sendJson(res, 200, { ok: true, post, linkedKeywords: keywords });
   } catch (error) {
     sendJson(res, 500, { ok: false, error: "wordpress_publish_failed", message: error.message });
   }

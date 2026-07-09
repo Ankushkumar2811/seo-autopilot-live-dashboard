@@ -1,3 +1,5 @@
+import { keywordInstruction } from "./seo-links.js";
+
 function fallbackContent({ businessName, city, services, keyword }) {
   const serviceText = services || "local SEO, website optimization, and growth marketing";
   const topic = keyword || serviceText;
@@ -101,6 +103,7 @@ City/area: ${input.city || "local market"}
 Services: ${input.services || "SEO services"}
 Target keyword/topic: ${input.keyword || "local SEO"}
 Tone: practical, trustworthy, Indian market friendly.
+${keywordInstruction()}
 
 Return only valid JSON:
 {

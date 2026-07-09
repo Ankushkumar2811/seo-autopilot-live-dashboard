@@ -1,6 +1,7 @@
 import { getDb } from "./_lib/db.js";
 import { generateSeoContent } from "./_lib/llm.js";
 import { sendJson } from "./_lib/http.js";
+import { getKeywordConfig, linkKeywordsInHtml } from "./_lib/seo-links.js";
 
 export default async function handler(req, res) {
   if (req.method !== "GET" && req.method !== "POST") {
@@ -19,12 +20,15 @@ export default async function handler(req, res) {
   const city = process.env.AUTOPILOT_CITY || "Indore";
   const services = process.env.AUTOPILOT_SERVICES || "SEO, website development, Google Business Profile management";
   const keyword = process.env.AUTOPILOT_KEYWORD || "seo company indore";
+  const { keywords, linkUrl } = getKeywordConfig();
   const run = {
     businessName,
     websiteUrl,
     city,
     services,
     keyword,
+    keywords,
+    linkUrl,
     startedAt: new Date(),
     mode: {
       wpDrafts: process.env.AUTO_CREATE_WP_DRAFTS === "true",
@@ -40,7 +44,7 @@ export default async function handler(req, res) {
     run.content = await generateSeoContent({ businessName, city, services, keyword });
 
     if (process.env.AUTO_CREATE_WP_DRAFTS === "true") {
-      run.wordpressDraft = await createWordPressDraft(run.content.blog);
+      run.wordpressDraft = await createWordPressDraft(run.content.blog, keywords, linkUrl);
     }
 
     run.finishedAt = new Date();
@@ -96,7 +100,7 @@ async function auditWebsite(url) {
   };
 }
 
-async function createWordPressDraft(blog) {
+async function createWordPressDraft(blog, keywords, linkUrl) {
   if (!blog?.title || !blog?.content) throw new Error("blog draft missing");
   const missing = ["WP_SITE_URL", "WP_USERNAME", "WP_APP_PASSWORD"].filter((key) => !process.env[key]);
   if (missing.length) throw new Error(`missing ${missing.join(", ")}`);
@@ -110,7 +114,7 @@ async function createWordPressDraft(blog) {
     },
     body: JSON.stringify({
       title: blog.title,
-      content: blog.content,
+      content: linkKeywordsInHtml(blog.content, keywords, linkUrl),
       excerpt: blog.excerpt,
       status: "draft",
       categories: process.env.WP_DEFAULT_CATEGORY_ID ? [Number(process.env.WP_DEFAULT_CATEGORY_ID)] : undefined,
