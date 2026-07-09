@@ -577,6 +577,88 @@ h1 {
   flex-wrap: wrap;
 }
 
+.seo-plan-panel {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #cce6e0;
+  border-radius: 8px;
+  background: #f5fbfa;
+}
+
+.seo-plan-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+}
+
+.seo-plan-header strong,
+.seo-plan-header span,
+.plan-row strong,
+.plan-row span,
+.plan-row em,
+.plan-row small,
+.schedule-row small {
+  display: block;
+}
+
+.seo-plan-header span,
+.plan-row span,
+.plan-row em,
+.plan-row small,
+.schedule-row small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.seo-plan-form {
+  display: grid;
+  grid-template-columns: minmax(210px, 1.2fr) minmax(150px, 0.8fr) 92px 150px 110px;
+  gap: 10px;
+}
+
+.seo-plan-form input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  padding: 0 12px;
+  outline: none;
+}
+
+.plan-list {
+  display: grid;
+  gap: 8px;
+}
+
+.plan-row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.plan-row input {
+  margin-top: 3px;
+}
+
+.plan-row em {
+  font-style: normal;
+}
+
+.plan-row small,
+.schedule-row small {
+  line-height: 1.4;
+}
+
 .schedule-list {
   display: grid;
   gap: 8px;
@@ -724,8 +806,14 @@ h1 {
   .automation-grid,
   .result-grid,
   .scheduler-form,
+  .seo-plan-form,
   .bulk-box {
     grid-template-columns: 1fr;
+  }
+
+  .seo-plan-header {
+    align-items: stretch;
+    display: grid;
   }
 
   .schedule-row {
