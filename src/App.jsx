@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import {
   BarChart3,
   CalendarDays,
+  CalendarPlus,
   Check,
   ChevronRight,
   ClipboardCheck,
@@ -89,12 +90,14 @@ const seedData = {
   health: {
     c1: healthTemplate,
   },
+  blogSchedules: {},
 };
 
 const tabs = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "reviews", label: "Reviews", icon: MessageCircle },
   { id: "posts", label: "GBP Posts", icon: CalendarDays },
+  { id: "scheduler", label: "Blog Scheduler", icon: CalendarPlus },
   { id: "content", label: "Content", icon: Sparkles },
   { id: "backlinks", label: "Backlinks", icon: Link2 },
   { id: "health", label: "SEO Health", icon: ClipboardCheck },
@@ -131,6 +134,7 @@ export default function App() {
   const backlinks = data.backlinks[clientId] || [];
   const ideas = data.contentIdeas[clientId] || [];
   const health = data.health[clientId] || healthTemplate.map((item) => ({ ...item, done: false }));
+  const blogSchedules = data.blogSchedules?.[clientId] || [];
 
   const metrics = useMemo(() => {
     const healthScore = Math.round((health.reduce((sum, item) => sum + (item.done ? item.impact : 0), 0) / health.reduce((sum, item) => sum + item.impact, 0)) * 100);
@@ -267,6 +271,7 @@ export default function App() {
         {tab === "overview" && <Overview metrics={metrics} reviews={reviews} posts={posts} backlinks={backlinks} health={health} setTab={setTab} />}
         {tab === "reviews" && <Reviews reviews={reviews} client={activeClient} copiedId={copiedId} setCopiedId={setCopiedId} onChange={(next) => setCollection("reviews", next)} />}
         {tab === "posts" && <Posts posts={posts} onChange={(next) => setCollection("posts", next)} />}
+        {tab === "scheduler" && <BlogScheduler schedules={blogSchedules} onChange={(next) => setCollection("blogSchedules", next)} />}
         {tab === "content" && <Content ideas={ideas} client={activeClient} onChange={(next) => setCollection("contentIdeas", next)} />}
         {tab === "backlinks" && <Backlinks backlinks={backlinks} onChange={(next) => setCollection("backlinks", next)} />}
         {tab === "health" && <Health items={health} score={metrics.healthScore} onChange={(next) => setCollection("health", next)} />}
@@ -376,6 +381,131 @@ function Posts({ posts, onChange }) {
           <button className="icon-button danger" onClick={() => onChange(posts.filter((row) => row.id !== item.id))} title="Delete"><Trash2 size={16} /></button>
         </div>
       ))}
+    </CrudPanel>
+  );
+}
+
+function BlogScheduler({ schedules, onChange }) {
+  const [draft, setDraft] = useState({ date: "", title: "", keywords: "" });
+  const [bulkText, setBulkText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [results, setResults] = useState([]);
+  const [message, setMessage] = useState("");
+
+  const pending = schedules.filter((item) => !item.postId && item.status !== "scheduled");
+
+  function addOne() {
+    if (!draft.title.trim() || !draft.date) return;
+    onChange([
+      ...schedules,
+      {
+        id: uid("bs"),
+        title: draft.title.trim(),
+        date: draft.date,
+        keywords: draft.keywords.trim(),
+        status: "queued",
+      },
+    ]);
+    setDraft({ date: "", title: "", keywords: "" });
+  }
+
+  function importBulk() {
+    const items = bulkText
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith("#"))
+      .map((line) => {
+        const [date, title, keywords = ""] = line.split("|").map((part) => part.trim());
+        return title && date ? { id: uid("bs"), date, title, keywords, status: "queued" } : null;
+      })
+      .filter(Boolean);
+    if (!items.length) return;
+    onChange([...schedules, ...items]);
+    setBulkText("");
+  }
+
+  async function scheduleAll() {
+    if (!pending.length) return;
+    setBusy(true);
+    setMessage("");
+    setResults([]);
+    try {
+      const response = await api("/api/schedule-blogs", {
+        posts: pending.map((item) => ({
+          title: item.title,
+          date: item.date,
+          keywords: item.keywords,
+        })),
+      });
+      setResults(response.results || []);
+      const next = schedules.map((item) => {
+        const result = response.results?.find((row) => row.title === item.title);
+        if (!result) return item;
+        return {
+          ...item,
+          status: result.ok ? result.status : "error",
+          postId: result.postId,
+          link: result.link,
+          error: result.error,
+          scheduledFor: result.scheduledFor,
+        };
+      });
+      onChange(next);
+      setMessage(response.ok ? "All blogs scheduled." : "Some blogs need attention.");
+    } catch (error) {
+      setMessage(error.message || "Scheduling failed");
+    }
+    setBusy(false);
+  }
+
+  return (
+    <CrudPanel title="Blog scheduler" description="Add many blog titles with dates, then schedule them into WordPress with SEO keywords and internal links.">
+      <div className="scheduler-form">
+        <input type="date" value={draft.date} onChange={(event) => setDraft({ ...draft, date: event.target.value })} />
+        <input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} placeholder="Blog title" />
+        <input value={draft.keywords} onChange={(event) => setDraft({ ...draft, keywords: event.target.value })} placeholder="Keywords, comma separated" />
+        <button className="primary-button" onClick={addOne}><Plus size={16} /> Add</button>
+      </div>
+
+      <div className="bulk-box">
+        <textarea
+          value={bulkText}
+          onChange={(event) => setBulkText(event.target.value)}
+          placeholder={"2026-07-15 | Best SEO Company in Indore | seo company indore, local SEO\n2026-07-18 | Website Development and SEO | website development, digital marketing"}
+        />
+        <button className="ghost-button" onClick={importBulk}>Import lines</button>
+      </div>
+
+      <div className="scheduler-actions">
+        <button className="primary-button" disabled={!pending.length || busy} onClick={scheduleAll}>
+          <CalendarPlus size={16} /> {busy ? "Scheduling..." : `Schedule ${pending.length || 0}`}
+        </button>
+        <button className="ghost-button" onClick={() => onChange([])}>Clear list</button>
+      </div>
+
+      {message && <div className="notice">{message}</div>}
+      <ListEmpty items={schedules} text="No blog queued yet." />
+      <div className="schedule-list">
+        {schedules.map((item) => (
+          <div className="schedule-row" key={item.id}>
+            <div>
+              <strong>{item.title}</strong>
+              <span>{item.date} · {item.keywords || "default keywords"}</span>
+              {item.error && <em>{item.error}</em>}
+            </div>
+            {item.link ? (
+              <a className="chip success" href={item.link} target="_blank" rel="noreferrer">{item.status || "scheduled"}</a>
+            ) : (
+              <span className="chip">{item.status || "queued"}</span>
+            )}
+            <button className="icon-button danger" onClick={() => onChange(schedules.filter((row) => row.id !== item.id))} title="Remove">
+              <Trash2 size={16} />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {results.length > 0 && <pre className="result-box">{JSON.stringify(results, null, 2)}</pre>}
     </CrudPanel>
   );
 }

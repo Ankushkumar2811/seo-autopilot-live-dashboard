@@ -535,6 +535,83 @@ h1 {
   line-height: 1.5;
 }
 
+.scheduler-form {
+  display: grid;
+  grid-template-columns: 170px minmax(220px, 1fr) minmax(200px, 0.8fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.scheduler-form input,
+.bulk-box textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  outline: none;
+}
+
+.scheduler-form input {
+  min-height: 42px;
+  padding: 0 12px;
+}
+
+.bulk-box {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+}
+
+.bulk-box textarea {
+  min-height: 112px;
+  padding: 12px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.scheduler-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.schedule-list {
+  display: grid;
+  gap: 8px;
+}
+
+.schedule-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft);
+  padding: 12px;
+}
+
+.schedule-row strong,
+.schedule-row span,
+.schedule-row em {
+  display: block;
+}
+
+.schedule-row span {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.schedule-row em {
+  margin-top: 5px;
+  color: var(--red);
+  font-style: normal;
+  font-size: 12px;
+}
+
 .score-banner {
   display: flex;
   align-items: center;
@@ -645,8 +722,14 @@ h1 {
   .client-strip,
   .draft-grid,
   .automation-grid,
-  .result-grid {
+  .result-grid,
+  .scheduler-form,
+  .bulk-box {
     grid-template-columns: 1fr;
+  }
+
+  .schedule-row {
+    grid-template-columns: 1fr auto;
   }
 
   .data-row {
