@@ -1,25 +1,46 @@
 import { keywordInstruction } from "./seo-links.js";
 
-function fallbackContent({ businessName, city, services, keyword }) {
+function fallbackContent({ businessName, city, services, keyword, title }) {
   const serviceText = services || "local SEO, website optimization, and growth marketing";
   const topic = keyword || serviceText;
+  const blogTitle = title || `${topic}: Practical SEO Plan for ${city || "Local"} Businesses`;
   return {
     provider: "fallback",
     blog: {
-      title: `${topic}: Practical SEO Plan for ${city || "Local"} Businesses`,
+      title: blogTitle,
       excerpt: `A practical, locally focused SEO plan for ${businessName || "your business"}.`,
       content: [
-        `# ${topic}: Practical SEO Plan`,
+        `# ${blogTitle}`,
         "",
-        `${businessName || "Your business"} can improve local visibility by keeping the website technically clean, publishing useful service content, and maintaining an active Google Business Profile.`,
+        `${businessName || "Your business"} can improve local visibility by combining technical SEO, useful service content, strong internal linking, and an active Google Business Profile. This guide explains how a real business in ${city || "your city"} can turn ${topic} into calls, enquiries, and better search visibility.`,
+        "",
+        "## Why this topic matters",
+        `People searching for ${topic} are usually comparing options, checking trust, and looking for a clear reason to contact a business. A strong article should answer those questions before the visitor leaves the page.`,
         "",
         "## What to fix first",
-        "- Make sure every service page has a clear title, meta description, local keyword focus, and direct call to action.",
-        "- Keep business name, address, and phone consistent across the website and citations.",
-        "- Add internal links from high-value pages to service pages.",
+        "Start with the service pages that matter most. Each page needs a clear title, helpful headings, proof of work, FAQs, local relevance, and a direct call to action. The website should load fast, work well on mobile, and make it easy for users to call, WhatsApp, or request a quote.",
+        "",
+        "## Content strategy",
+        "Publish blogs that match real customer questions. Cover pricing, process, comparison, mistakes, checklists, and local examples. Every article should connect naturally to a service page using internal links, so readers and search engines understand which pages are most important.",
+        "",
+        "## Local SEO signals",
+        "Keep the business name, address, phone number, service areas, photos, reviews, and Google Business updates consistent. Local rankings improve when the website and profile tell the same story repeatedly and clearly.",
+        "",
+        "## Conversion plan",
+        "Good SEO is not only ranking. Add proof, benefits, process, FAQs, and a strong CTA near the end of the blog. Visitors should know what problem you solve, why you are credible, and what step to take next.",
         "",
         "## Weekly action plan",
-        "Publish one helpful blog, one Google Business post, add fresh photos, and request genuine reviews from completed customers.",
+        "Publish one useful blog, one Google Business post, add fresh photos, request genuine reviews, and track calls, form submissions, rankings, and organic traffic. Small consistent work compounds into stronger visibility.",
+        "",
+        "## FAQ",
+        `### How long does ${topic} take to show results?`,
+        "Most businesses need consistent work for a few months, depending on competition, website quality, content depth, and review strength.",
+        "",
+        "### Should every blog target a keyword?",
+        "Yes, but the article should still read naturally. The goal is to answer the user intent better than competing pages.",
+        "",
+        "### What should be the next step?",
+        `Book a practical audit with ${businessName || "the team"} and identify the pages, keywords, and Google Business improvements that can create the quickest gains.`,
       ].join("\n"),
     },
     gmbPosts: [
@@ -34,7 +55,7 @@ function fallbackContent({ businessName, city, services, keyword }) {
         cta: "CALL",
       },
     ],
-    imagePrompt: `Clean professional marketing image for ${businessName || "a local business"} about ${topic}, realistic Indian business context, no text overlay, high quality.`,
+    imagePrompt: `Realistic high-quality featured image for the blog titled "${blogTitle}", Indian business owner and digital marketing team reviewing website analytics, modern office, natural light, no text overlay.`,
   };
 }
 
@@ -181,9 +202,9 @@ ${keywordInstruction()}
 
 Return only valid JSON:
 {
-  "blog": {"title": "${input.title || "..."}", "excerpt": "...", "content": "markdown article, 900-1300 words with practical headings and clear CTA"},
+  "blog": {"title": "${input.title || "..."}", "excerpt": "...", "content": "markdown article, 1600-2200 words, deep practical SEO guide with H2/H3 headings, local examples, bullets, FAQ, conclusion and clear CTA"},
   "gmbPosts": [{"topicType": "STANDARD", "summary": "80-180 words", "cta": "LEARN_MORE"}],
-  "imagePrompt": "prompt for a realistic marketing image with no text overlay"
+  "imagePrompt": "realistic featured image prompt based on the exact blog title, no text overlay"
 }`;
 }
 
