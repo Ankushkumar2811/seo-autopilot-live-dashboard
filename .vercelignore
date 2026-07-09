@@ -1,0 +1,5 @@
+.npm-cache/
+PRIVATE_CLIENT_DETAILS.md
+.env
+.env.*
+node_modules/

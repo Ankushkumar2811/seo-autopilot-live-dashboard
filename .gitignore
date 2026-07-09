@@ -5,6 +5,7 @@ dist/
 .env.*
 !.env.example
 PRIVATE_CLIENT_DETAILS.md
+.npm-cache/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
