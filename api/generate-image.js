@@ -6,16 +6,6 @@ export default async function handler(req, res) {
   const { prompt, title } = await readJson(req);
   if (!prompt) return sendJson(res, 400, { ok: false, error: "prompt_required" });
 
-  if (!process.env.OPENAI_API_KEY) {
-    return sendJson(res, 200, {
-      ok: true,
-      mode: "brief_only",
-      imageUrl: null,
-      prompt,
-      message: "Add OPENAI_API_KEY to generate real images. This prompt is ready for image generation.",
-    });
-  }
-
   try {
     const result = await generateImageAsset(prompt, title);
     sendJson(res, 200, { ok: true, ...result });
