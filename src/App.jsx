@@ -20,7 +20,7 @@ import {
   Target,
   Trash2,
   TrendingUp,
-  Users,
+  Wand2,
 } from "lucide-react";
 
 const STORAGE_KEY = "unnatix-seo-autopilot-live-v2";
@@ -45,6 +45,8 @@ const seedData = {
       name: "UnnatiX Technologies",
       type: "Digital marketing agency",
       city: "Indore",
+      websiteUrl: "https://unnatix.com",
+      services: "SEO, website development, Google Business Profile management",
       gmbUrl: "https://g.page/r/example-review-link",
       goal: "Rank in local map pack for SEO and website services",
     },
@@ -53,6 +55,8 @@ const seedData = {
       name: "Bright Dental Studio",
       type: "Dental clinic",
       city: "Noida",
+      websiteUrl: "",
+      services: "Root canal, cosmetic dentistry, dental implants",
       gmbUrl: "",
       goal: "Increase calls for root canal and cosmetic dentistry",
     },
@@ -94,6 +98,7 @@ const tabs = [
   { id: "content", label: "Content", icon: Sparkles },
   { id: "backlinks", label: "Backlinks", icon: Link2 },
   { id: "health", label: "SEO Health", icon: ClipboardCheck },
+  { id: "autopilot", label: "Autopilot", icon: Wand2 },
 ];
 
 function safeLoad() {
@@ -250,12 +255,12 @@ export default function App() {
 
         <section className="client-strip">
           <div className="input-group wide">
-            <label>Google review link</label>
-            <input value={activeClient.gmbUrl} onChange={(event) => updateClient({ gmbUrl: event.target.value })} placeholder="Paste Google Business review URL" />
+            <label>Website URL</label>
+            <input value={activeClient.websiteUrl || ""} onChange={(event) => updateClient({ websiteUrl: event.target.value })} placeholder="https://example.com" />
           </div>
           <div className="input-group">
-            <label>Business goal</label>
-            <input value={activeClient.goal} onChange={(event) => updateClient({ goal: event.target.value })} />
+            <label>Google review link</label>
+            <input value={activeClient.gmbUrl} onChange={(event) => updateClient({ gmbUrl: event.target.value })} placeholder="Paste Google Business review URL" />
           </div>
         </section>
 
@@ -265,6 +270,7 @@ export default function App() {
         {tab === "content" && <Content ideas={ideas} client={activeClient} onChange={(next) => setCollection("contentIdeas", next)} />}
         {tab === "backlinks" && <Backlinks backlinks={backlinks} onChange={(next) => setCollection("backlinks", next)} />}
         {tab === "health" && <Health items={health} score={metrics.healthScore} onChange={(next) => setCollection("health", next)} />}
+        {tab === "autopilot" && <Autopilot client={activeClient} onSaveIdea={(idea) => setCollection("contentIdeas", [idea, ...ideas])} />}
       </main>
     </div>
   );
@@ -501,4 +507,124 @@ function CrudPanel({ title, description, children }) {
 function ListEmpty({ items, text }) {
   if (items.length) return null;
   return <div className="empty-state"><FileText size={18} /> {text}</div>;
+}
+
+function Autopilot({ client, onSaveIdea }) {
+  const [keyword, setKeyword] = useState("");
+  const [status, setStatus] = useState(null);
+  const [audit, setAudit] = useState(null);
+  const [draft, setDraft] = useState(null);
+  const [busy, setBusy] = useState("");
+  const [message, setMessage] = useState("");
+
+  async function run(label, action) {
+    setBusy(label);
+    setMessage("");
+    try {
+      await action();
+    } catch (error) {
+      setMessage(error.message || "Action failed");
+    }
+    setBusy("");
+  }
+
+  return (
+    <CrudPanel title="Real autopilot controls" description="Live backend actions for website audit, AI content, image generation, WordPress drafts, and GMB posts.">
+      <div className="automation-grid">
+        <button className="automation-card" onClick={() => run("health", async () => setStatus(await api("/api/health")))}>
+          <SearchCheck size={20} />
+          <strong>Check integrations</strong>
+          <span>Database, AI, WordPress, GMB, SMTP readiness</span>
+        </button>
+        <button className="automation-card" onClick={() => run("audit", async () => setAudit((await api("/api/audit", { url: client.websiteUrl, clientId: client.id })).audit))}>
+          <Globe2 size={20} />
+          <strong>Audit website</strong>
+          <span>Title, meta, H1, schema, links, image alt text</span>
+        </button>
+        <button className="automation-card" onClick={() => run("content", async () => {
+          const result = await api("/api/generate-content", {
+            businessName: client.name,
+            city: client.city,
+            services: client.services,
+            keyword: keyword || client.services,
+          });
+          setDraft(result.content);
+          if (result.content?.blog?.title) {
+            onSaveIdea({ id: uid("ci"), kind: "Blog", keyword: keyword || "autopilot", text: result.content.blog.title, date: today() });
+          }
+        })}>
+          <Sparkles size={20} />
+          <strong>Generate SEO content</strong>
+          <span>Blog draft, GMB posts, and image prompt</span>
+        </button>
+      </div>
+
+      <div className="form-row">
+        <input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="Keyword/topic for content generation" />
+        <button className="primary-button" disabled={Boolean(busy)} onClick={() => run("image", async () => {
+          const prompt = draft?.imagePrompt || `Professional local SEO marketing image for ${client.name}`;
+          const result = await api("/api/generate-image", { prompt });
+          setDraft({ ...(draft || {}), generatedImage: result });
+        })}>
+          <Sparkles size={16} /> Image
+        </button>
+        <button className="primary-button" disabled={!draft?.blog || Boolean(busy)} onClick={() => run("wordpress", async () => {
+          const result = await api("/api/publish-wordpress", {
+            title: draft.blog.title,
+            excerpt: draft.blog.excerpt,
+            content: draft.blog.content,
+            status: "draft",
+          });
+          setMessage(`WordPress draft created: ${result.post?.link || result.post?.id}`);
+        })}>
+          <FileText size={16} /> WP Draft
+        </button>
+        <button className="primary-button" disabled={!draft?.gmbPosts?.length || Boolean(busy)} onClick={() => run("gmb", async () => {
+          const firstPost = draft.gmbPosts[0];
+          const result = await api("/api/publish-gmb", {
+            summary: firstPost.summary,
+            cta: firstPost.cta || "LEARN_MORE",
+            url: client.websiteUrl,
+          });
+          setMessage(`GMB post created: ${result.post?.name || "done"}`);
+        })}>
+          <MapPin size={16} /> GMB Post
+        </button>
+      </div>
+
+      {busy && <div className="notice">Running {busy}...</div>}
+      {message && <div className="notice">{message}</div>}
+      {status && <pre className="result-box">{JSON.stringify(status, null, 2)}</pre>}
+      {audit && (
+        <div className="score-banner">
+          <div className="score-circle" style={{ "--score": `${audit.score * 3.6}deg` }}>{audit.score}%</div>
+          <div>
+            <strong>{audit.title || "Website audit"}</strong>
+            <span>{audit.issues.length ? audit.issues.join(" · ") : "No major on-page issue found."}</span>
+          </div>
+        </div>
+      )}
+      {draft && (
+        <div className="result-grid">
+          {draft.blog && <div className="result-card"><span>Blog draft</span><strong>{draft.blog.title}</strong><p>{draft.blog.excerpt}</p></div>}
+          {draft.gmbPosts?.map((post, index) => <div className="result-card" key={index}><span>GMB post</span><p>{post.summary}</p></div>)}
+          {draft.imagePrompt && <div className="result-card"><span>Image prompt</span><p>{draft.imagePrompt}</p></div>}
+          {draft.generatedImage && <div className="result-card"><span>Image result</span><p>{draft.generatedImage.message || draft.generatedImage.mode}</p></div>}
+        </div>
+      )}
+    </CrudPanel>
+  );
+}
+
+async function api(path, body) {
+  const response = await fetch(path, {
+    method: body ? "POST" : "GET",
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await response.json();
+  if (!response.ok || data.ok === false) {
+    throw new Error(data.message || data.error || `Request failed: ${response.status}`);
+  }
+  return data;
 }

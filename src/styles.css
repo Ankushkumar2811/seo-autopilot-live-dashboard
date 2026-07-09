@@ -464,6 +464,77 @@ h1 {
   font-weight: 800;
 }
 
+.automation-grid,
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.automation-card,
+.result-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  text-align: left;
+}
+
+.automation-card {
+  min-height: 128px;
+  padding: 16px;
+  display: grid;
+  align-content: start;
+  gap: 9px;
+}
+
+.automation-card svg {
+  color: var(--teal);
+}
+
+.automation-card span,
+.result-card span {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.result-card {
+  padding: 14px;
+  display: grid;
+  gap: 7px;
+  line-height: 1.45;
+}
+
+.result-card span {
+  color: var(--teal);
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+.notice {
+  border: 1px solid #cce6e0;
+  background: #eef9f7;
+  color: var(--teal);
+  border-radius: 8px;
+  padding: 11px 12px;
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.result-box {
+  max-height: 280px;
+  overflow: auto;
+  white-space: pre-wrap;
+  background: #111827;
+  color: #d1fae5;
+  border-radius: 8px;
+  padding: 14px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .score-banner {
   display: flex;
   align-items: center;
@@ -572,7 +643,9 @@ h1 {
   .metric-grid,
   .split-grid,
   .client-strip,
-  .draft-grid {
+  .draft-grid,
+  .automation-grid,
+  .result-grid {
     grid-template-columns: 1fr;
   }
 
