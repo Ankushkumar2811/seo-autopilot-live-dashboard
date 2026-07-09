@@ -77,7 +77,7 @@ async function uploadDataUriToCloudinary(dataUri, title) {
 
 function buildBrandedSvg(title, prompt) {
   const safeTitle = escapeXml(title).slice(0, 140);
-  const subtitle = escapeXml(extractSubtitle(prompt, title)).slice(0, 130);
+  const subtitle = escapeXml(buildSubtitle(title, prompt)).slice(0, 130);
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
@@ -97,8 +97,8 @@ function buildBrandedSvg(title, prompt) {
   <rect x="122" y="116" width="118" height="48" rx="12" fill="#12343b"/>
   <text x="146" y="148" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800" fill="#ffffff">UnnatiX</text>
   <text x="122" y="248" font-family="Georgia, serif" font-size="50" font-weight="800" fill="#17212b">${wrapSvgText(safeTitle, 33, 122, 248, 62)}</text>
-  <text x="122" y="462" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="600" fill="#0f766e">${wrapSvgText(subtitle, 58, 122, 462, 36, 2)}</text>
-  <text x="122" y="520" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="700" fill="#667085">SEO | Website | Growth Marketing</text>
+  <text x="122" y="456" font-family="Inter, Arial, sans-serif" font-size="25" font-weight="700" fill="#0f766e">${wrapSvgText(subtitle, 62, 122, 456, 34, 2)}</text>
+  <text x="122" y="522" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="700" fill="#667085">SEO | Website | Social Media | Growth Marketing</text>
   <path d="M895 385c66-90 126-138 178-144-24 47-44 112-50 194-39-38-82-53-128-50Z" fill="#d99a21" opacity=".9"/>
 </svg>`;
 }
@@ -121,8 +121,33 @@ function wrapSvgText(text, maxChars, x, y, lineHeight, maxLines = 3) {
   return lines.map((item, index) => `<tspan x="${x}" y="${y + index * lineHeight}">${item}</tspan>`).join("");
 }
 
-function extractSubtitle(prompt, title) {
-  return String(prompt || "").replace(title, "").replace(/realistic|featured image|blog|no text overlay/gi, "").replace(/\s+/g, " ").trim() || "Practical digital growth insights for Indian businesses";
+function buildSubtitle(title, prompt) {
+  const city = extractCity(title) || extractCity(prompt);
+  const service = extractService(title);
+  if (city && service) return `A practical ${service} guide for growth-focused businesses in ${city}`;
+  if (service) return `A practical ${service} guide for growth-focused businesses`;
+  if (city) return `Practical digital growth insights for businesses in ${city}`;
+  return "Practical digital growth insights for Indian businesses";
+}
+
+function extractCity(value = "") {
+  const text = String(value || "");
+  const match = text.match(/\bin\s+([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){0,2})/);
+  return match?.[1]?.replace(/\bFor\b.*$/i, "").trim();
+}
+
+function extractService(value = "") {
+  const text = String(value || "").toLowerCase();
+  const services = [
+    "social media management",
+    "app development",
+    "website development",
+    "digital marketing",
+    "seo",
+    "google business profile",
+    "content marketing",
+  ];
+  return services.find((service) => text.includes(service)) || "digital marketing";
 }
 
 function toPngDeliveryUrl(url) {
