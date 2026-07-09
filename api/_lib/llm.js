@@ -101,13 +101,15 @@ function buildPrompt(input) {
 Business: ${input.businessName || "Local business"}
 City/area: ${input.city || "local market"}
 Services: ${input.services || "SEO services"}
+${input.title ? `Exact blog title to use: ${input.title}` : ""}
 Target keyword/topic: ${input.keyword || "local SEO"}
+${input.extraKeywords?.length ? `Extra keywords to include naturally: ${input.extraKeywords.join(", ")}` : ""}
 Tone: practical, trustworthy, Indian market friendly.
 ${keywordInstruction()}
 
 Return only valid JSON:
 {
-  "blog": {"title": "...", "excerpt": "...", "content": "markdown article, 700-1000 words"},
+  "blog": {"title": "${input.title || "..."}", "excerpt": "...", "content": "markdown article, 900-1300 words with practical headings and clear CTA"},
   "gmbPosts": [{"topicType": "STANDARD", "summary": "80-180 words", "cta": "LEARN_MORE"}],
   "imagePrompt": "prompt for a realistic marketing image with no text overlay"
 }`;

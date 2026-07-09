@@ -1,8 +1,9 @@
-export function getKeywordConfig() {
-  const keywords = (process.env.AUTOPILOT_KEYWORDS || process.env.AUTOPILOT_KEYWORD || "")
+export function getKeywordConfig(extraKeywords = []) {
+  const envKeywords = (process.env.AUTOPILOT_KEYWORDS || process.env.AUTOPILOT_KEYWORD || "")
     .split(",")
     .map((keyword) => keyword.trim())
     .filter(Boolean);
+  const keywords = [...extraKeywords, ...envKeywords].map((keyword) => keyword.trim()).filter(Boolean);
   const linkUrl = process.env.AUTOPILOT_LINK_URL || process.env.WP_SITE_URL || "https://unnatix.in";
   return { keywords: dedupe(keywords), linkUrl };
 }

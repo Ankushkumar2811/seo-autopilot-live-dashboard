@@ -1,4 +1,5 @@
 import { missing, readJson, requireMethod, sendJson } from "./_lib/http.js";
+import { normalizeBlogContent } from "./_lib/content-format.js";
 import { getKeywordConfig, linkKeywordsInHtml } from "./_lib/seo-links.js";
 
 export default async function handler(req, res) {
@@ -8,12 +9,12 @@ export default async function handler(req, res) {
     return sendJson(res, 428, { ok: false, error: "missing_wordpress_config", missing: missingKeys });
   }
 
-  const { title, content, excerpt, status, imageUrl } = await readJson(req);
+  const { title, content, excerpt, status, imageUrl, date, keywords: extraKeywords } = await readJson(req);
   if (!title || !content) return sendJson(res, 400, { ok: false, error: "title_and_content_required" });
 
   try {
-    const { keywords, linkUrl } = getKeywordConfig();
-    const linkedContent = linkKeywordsInHtml(content, keywords, linkUrl);
+    const { keywords, linkUrl } = getKeywordConfig(extraKeywords || []);
+    const linkedContent = linkKeywordsInHtml(normalizeBlogContent(content), keywords, linkUrl);
     let featuredMedia;
     if (imageUrl) {
       featuredMedia = await uploadMedia(imageUrl, title);
@@ -27,6 +28,7 @@ export default async function handler(req, res) {
         content: linkedContent,
         excerpt,
         status: status || process.env.WP_PUBLISH_MODE || "draft",
+        date,
         categories: process.env.WP_DEFAULT_CATEGORY_ID ? [Number(process.env.WP_DEFAULT_CATEGORY_ID)] : undefined,
         featured_media: featuredMedia,
       }),
