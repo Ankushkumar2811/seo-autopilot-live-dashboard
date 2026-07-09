@@ -2,6 +2,7 @@ import { getDb } from "./_lib/db.js";
 import { generateSeoContent } from "./_lib/llm.js";
 import { missing, readJson, requireMethod, sendJson } from "./_lib/http.js";
 import { normalizeBlogContent } from "./_lib/content-format.js";
+import { generateImageAsset } from "./_lib/images.js";
 import { getKeywordConfig, linkKeywordsInHtml } from "./_lib/seo-links.js";
 
 export default async function handler(req, res) {
@@ -69,6 +70,7 @@ function cleanItem(item) {
     date: String(item.date || item.scheduledDate || "").trim(),
     keywords,
     imageUrl: item.imageUrl || process.env.DEFAULT_FEATURED_IMAGE_URL || "",
+    imagePrompt: String(item.imagePrompt || "").trim(),
   };
 }
 
@@ -87,7 +89,8 @@ async function scheduleOne(item) {
   const blog = content.blog || {};
   const { keywords, linkUrl } = getKeywordConfig(item.keywords);
   const html = linkKeywordsInHtml(normalizeBlogContent(blog.content), keywords, linkUrl);
-  const featuredMedia = item.imageUrl ? await uploadMedia(item.imageUrl, item.title) : undefined;
+  const imageAsset = await resolveFeaturedImage(item, content.imagePrompt);
+  const featuredMedia = imageAsset.imageUrl ? await uploadMedia(imageAsset.imageUrl, item.title) : undefined;
   const postBody = {
     title: item.title,
     content: html,
@@ -112,6 +115,24 @@ async function scheduleOne(item) {
     provider: content.provider,
     linkedKeywords: keywords,
     featuredMedia: featuredMedia || null,
+    imageMode: imageAsset.mode,
+    imageUrl: imageAsset.imageUrl || null,
+  };
+}
+
+async function resolveFeaturedImage(item, generatedPrompt) {
+  const prompt = item.imagePrompt || generatedPrompt;
+  if (prompt) {
+    try {
+      const asset = await generateImageAsset(prompt, item.title);
+      if (asset.imageUrl) return asset;
+    } catch (error) {
+      console.error("featured image generation failed", error.message);
+    }
+  }
+  return {
+    mode: item.imageUrl ? "provided_or_default" : "none",
+    imageUrl: item.imageUrl || "",
   };
 }
 

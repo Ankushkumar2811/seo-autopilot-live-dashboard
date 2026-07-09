@@ -219,6 +219,7 @@ Return only valid JSON:
       "slug": "...",
       "metaTitle": "...",
       "metaDescription": "...",
+      "imagePrompt": "realistic featured image prompt, no text overlay",
       "outline": ["H2 heading", "H2 heading", "H2 heading"]
     }
   ]
@@ -298,6 +299,7 @@ function fallbackBlogPlan(input) {
         slug: slug(title),
         metaTitle: title.slice(0, 58),
         metaDescription: `Learn how ${base.primaryKeyword} can improve visibility, leads, and local search growth for ${city} businesses.`,
+        imagePrompt: `Realistic professional featured image for a blog about ${title}, Indian business owner reviewing website analytics with a digital marketing team, modern office, warm natural light, no text overlay, high quality.`,
         outline: ["Search intent and buyer problem", "SEO action plan", "Local proof and next steps"],
       };
     }),
@@ -328,6 +330,7 @@ function normalizePlan(result, input) {
         slug: String(item.slug || slug(title)).trim(),
         metaTitle: String(item.metaTitle || title).trim(),
         metaDescription: String(item.metaDescription || "").trim(),
+        imagePrompt: String(item.imagePrompt || `Realistic professional SEO blog featured image for ${title}, no text overlay`).trim(),
         outline: Array.isArray(item.outline) ? item.outline.map((heading) => String(heading).trim()).filter(Boolean) : [],
       };
     }).filter((item) => {

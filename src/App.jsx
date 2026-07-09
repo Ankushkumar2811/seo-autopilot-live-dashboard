@@ -487,6 +487,7 @@ function BlogScheduler({ schedules, onChange }) {
         metaDescription: item.metaDescription,
         slug: item.slug,
         outline: item.outline,
+        imagePrompt: item.imagePrompt,
       }));
     if (!selected.length) return;
     onChange([...schedules, ...selected]);
@@ -505,6 +506,8 @@ function BlogScheduler({ schedules, onChange }) {
           title: item.title,
           date: item.date,
           keywords: item.keywords,
+          imagePrompt: item.imagePrompt,
+          imageUrl: item.imageUrl,
         })),
       });
       rememberTitles(pending.map((item) => item.title));
@@ -519,6 +522,8 @@ function BlogScheduler({ schedules, onChange }) {
           link: result.link,
           error: result.error,
           scheduledFor: result.scheduledFor,
+          imageMode: result.imageMode,
+          imageUrl: result.imageUrl || item.imageUrl,
         };
       });
       onChange(next);
@@ -559,6 +564,7 @@ function BlogScheduler({ schedules, onChange }) {
                   <span>{item.date} | {item.primaryKeyword}</span>
                   <em>{[item.primaryKeyword, ...(item.secondaryKeywords || [])].filter(Boolean).join(", ")}</em>
                   {item.metaDescription && <small>{item.metaDescription}</small>}
+                  {item.imagePrompt && <small>Image: {item.imagePrompt}</small>}
                 </div>
               </label>
             ))}
@@ -601,6 +607,7 @@ function BlogScheduler({ schedules, onChange }) {
               <strong>{item.title}</strong>
               <span>{item.date} · {item.keywords || "default keywords"}</span>
               {item.metaDescription && <small>{item.metaDescription}</small>}
+              {item.imageMode && <small>Image: {item.imageMode}</small>}
               {item.error && <em>{item.error}</em>}
             </div>
             {item.link ? (
@@ -814,6 +821,7 @@ function Autopilot({ client, onSaveIdea }) {
             excerpt: draft.blog.excerpt,
             content: draft.blog.content,
             status: "draft",
+            imageUrl: draft.generatedImage?.imageUrl,
           });
           setMessage(`WordPress draft created: ${result.post?.link || result.post?.id}`);
         })}>
@@ -849,7 +857,7 @@ function Autopilot({ client, onSaveIdea }) {
           {draft.blog && <div className="result-card"><span>Blog draft</span><strong>{draft.blog.title}</strong><p>{draft.blog.excerpt}</p></div>}
           {draft.gmbPosts?.map((post, index) => <div className="result-card" key={index}><span>GMB post</span><p>{post.summary}</p></div>)}
           {draft.imagePrompt && <div className="result-card"><span>Image prompt</span><p>{draft.imagePrompt}</p></div>}
-          {draft.generatedImage && <div className="result-card"><span>Image result</span><p>{draft.generatedImage.message || draft.generatedImage.mode}</p></div>}
+          {draft.generatedImage && <div className="result-card"><span>Image result</span><p>{draft.generatedImage.imageUrl || draft.generatedImage.message || draft.generatedImage.mode}</p></div>}
         </div>
       )}
     </CrudPanel>
