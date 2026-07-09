@@ -240,6 +240,31 @@ function fallbackBlogPlan(input) {
       primaryKeyword: `Google Business Profile SEO`,
       secondaryKeywords: [`GMB optimization`, `local map ranking`, `${city} local SEO`, `review management`],
     },
+    {
+      title: `${titleCase(topic)} Cost in ${city}: What Affects Pricing and ROI`,
+      primaryKeyword: `${topic} cost ${city}`,
+      secondaryKeywords: [`SEO pricing ${city}`, `marketing ROI`, `monthly SEO package`, `lead generation cost`],
+    },
+    {
+      title: `Local SEO vs Paid Ads: What Should ${city} Businesses Choose?`,
+      primaryKeyword: `local SEO vs paid ads`,
+      secondaryKeywords: [`Google Ads vs SEO`, `${city} marketing strategy`, `organic leads`, `paid traffic`],
+    },
+    {
+      title: `How to Choose the Right ${titleCase(topic)} Partner in ${city}`,
+      primaryKeyword: `choose ${topic} partner`,
+      secondaryKeywords: [`SEO agency ${city}`, `digital marketing company`, `SEO consultant`, `business growth partner`],
+    },
+    {
+      title: `Service Page SEO: How ${city} Businesses Can Rank for Buyer Keywords`,
+      primaryKeyword: `service page SEO`,
+      secondaryKeywords: [`buyer intent keywords`, `local service pages`, `${city} SEO strategy`, `conversion optimization`],
+    },
+    {
+      title: `Monthly ${titleCase(topic)} Report: Metrics Every Business Owner Should Track`,
+      primaryKeyword: `monthly SEO report`,
+      secondaryKeywords: [`SEO metrics`, `keyword rankings`, `organic traffic`, `local SEO performance`],
+    },
   ];
   const start = parseDate(input.startDate);
   const cadence = Math.max(1, Number(input.cadenceDays || 3));
