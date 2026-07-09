@@ -2,15 +2,17 @@ import crypto from "node:crypto";
 
 export async function generateImageAsset(prompt, title = "seo-blog-image") {
   if (!prompt) return { mode: "none", imageUrl: "" };
+  let geminiError = "";
   if (process.env.GEMINI_API_KEY) {
     try {
       return await generateGeminiImage(prompt, title);
     } catch (error) {
+      geminiError = error.message;
       console.error("Gemini image generation failed", error.message);
     }
   }
   if (!process.env.OPENAI_API_KEY) {
-    return generateBrandedImage(prompt, title);
+    return generateBrandedImage(prompt, title, geminiError);
   }
 
   const response = await fetch("https://api.openai.com/v1/images/generations", {
@@ -96,12 +98,12 @@ function strengthenImagePrompt(prompt, title) {
   ].filter(Boolean).join(" ");
 }
 
-async function generateBrandedImage(prompt, title) {
-  if (!hasCloudinary()) return { mode: "prompt_only", imageUrl: "", prompt };
+async function generateBrandedImage(prompt, title, fallbackReason = "") {
+  if (!hasCloudinary()) return { mode: "prompt_only", imageUrl: "", prompt, fallbackReason };
   const svg = buildBrandedSvg(title, prompt);
   const b64 = Buffer.from(svg, "utf8").toString("base64");
   const imageUrl = await uploadDataUriToCloudinary(`data:image/svg+xml;base64,${b64}`, title);
-  return { mode: "generated_brand_card", imageUrl: toPngDeliveryUrl(imageUrl), prompt };
+  return { mode: "generated_brand_card", imageUrl: toPngDeliveryUrl(imageUrl), prompt, fallbackReason };
 }
 
 async function uploadDataUriToCloudinary(dataUri, title) {
