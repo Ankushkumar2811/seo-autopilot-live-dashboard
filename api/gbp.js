@@ -7,13 +7,14 @@ export default async function handler(req, res) {
   const action = url.searchParams.get("action") || "locations";
 
   if (action === "oauth-url") return sendOAuthUrl(req, res);
+  if (action === "connect") return sendOAuthUrl(req, res, true);
   if (action === "callback") return handleCallback(req, res, url);
   if (action === "locations") return listLocations(req, res);
 
   return sendJson(res, 404, { ok: false, error: "unknown_gbp_action" });
 }
 
-function sendOAuthUrl(req, res) {
+function sendOAuthUrl(req, res, redirect = false) {
   if (!process.env.GOOGLE_CLIENT_ID) {
     return sendJson(res, 428, { ok: false, error: "missing_google_client_id" });
   }
@@ -27,6 +28,12 @@ function sendOAuthUrl(req, res) {
   url.searchParams.set("prompt", "consent");
   url.searchParams.set("include_granted_scopes", "true");
 
+  if (redirect) {
+    res.statusCode = 302;
+    res.setHeader("Location", url.toString());
+    res.end();
+    return;
+  }
   sendJson(res, 200, { ok: true, url: url.toString(), redirectUri: googleRedirectUri(req) });
 }
 
