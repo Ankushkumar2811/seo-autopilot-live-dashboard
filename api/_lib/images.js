@@ -2,6 +2,13 @@ import crypto from "node:crypto";
 
 export async function generateImageAsset(prompt, title = "seo-blog-image") {
   if (!prompt) return { mode: "none", imageUrl: "" };
+  if (process.env.GEMINI_API_KEY) {
+    try {
+      return await generateGeminiImage(prompt, title);
+    } catch (error) {
+      console.error("Gemini image generation failed", error.message);
+    }
+  }
   if (!process.env.OPENAI_API_KEY) {
     return generateBrandedImage(prompt, title);
   }
@@ -38,6 +45,54 @@ export function hasImageGeneration() {
 
 function hasCloudinary() {
   return Boolean(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
+}
+
+async function generateGeminiImage(prompt, title) {
+  const model = process.env.GEMINI_IMAGE_MODEL || "gemini-3.1-flash-image";
+  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": process.env.GEMINI_API_KEY,
+    },
+    body: JSON.stringify({
+      model,
+      input: [{ type: "text", text: strengthenImagePrompt(prompt, title) }],
+      response_format: {
+        type: "image",
+        mime_type: "image/png",
+        aspect_ratio: "16:9",
+        image_size: "1K",
+      },
+    }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error?.message || `Gemini image ${response.status}`);
+  const image = findGeminiImage(data);
+  if (!image?.data) throw new Error("Gemini returned no image");
+  const mimeType = image.mime_type || image.mimeType || "image/png";
+  if (!hasCloudinary()) return { mode: "gemini_generated_no_cloudinary", imageUrl: "", image, prompt };
+  const imageUrl = await uploadDataUriToCloudinary(`data:${mimeType};base64,${image.data}`, title);
+  return { mode: "gemini_generated", imageUrl, prompt };
+}
+
+function findGeminiImage(data) {
+  if (data.output_image?.data) return data.output_image;
+  if (data.outputImage?.data) return data.outputImage;
+  const blocks = [
+    ...(Array.isArray(data.output) ? data.output : []),
+    ...(Array.isArray(data.steps) ? data.steps.flatMap((step) => step.output || step.outputs || []) : []),
+  ];
+  return blocks.find((block) => block?.type === "image" && block?.data) || null;
+}
+
+function strengthenImagePrompt(prompt, title) {
+  return [
+    `Create a realistic, high-quality 16:9 blog featured image for: ${title}.`,
+    prompt,
+    "Indian business context, modern professional setting, SEO and digital growth theme, natural lighting.",
+    "No text, no logo, no watermark, no UI screenshot, no distorted hands, no blurry faces.",
+  ].filter(Boolean).join(" ");
 }
 
 async function generateBrandedImage(prompt, title) {
