@@ -82,6 +82,7 @@ function findGeminiImage(data) {
   const blocks = [
     ...(Array.isArray(data.output) ? data.output : []),
     ...(Array.isArray(data.steps) ? data.steps.flatMap((step) => step.output || step.outputs || []) : []),
+    ...(Array.isArray(data.steps) ? data.steps.flatMap((step) => step.content || step.contents || []) : []),
   ];
   return blocks.find((block) => block?.type === "image" && block?.data) || null;
 }
