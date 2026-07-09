@@ -4,15 +4,14 @@ function fallbackContent({ businessName, city, services, keyword, title }) {
   const serviceText = services || "local SEO, website optimization, and growth marketing";
   const topic = keyword || serviceText;
   const blogTitle = title || `${topic}: Practical SEO Plan for ${city || "Local"} Businesses`;
+  const brand = businessName || "UnnatiX";
   return {
     provider: "fallback",
     blog: {
       title: blogTitle,
-      excerpt: `A practical, locally focused SEO plan for ${businessName || "your business"}.`,
+      excerpt: `A practical, locally focused SEO plan from ${brand}.`,
       content: [
-        `# ${blogTitle}`,
-        "",
-        `${businessName || "Your business"} can improve local visibility by combining technical SEO, useful service content, strong internal linking, and an active Google Business Profile. This guide explains how a real business in ${city || "your city"} can turn ${topic} into calls, enquiries, and better search visibility.`,
+        `${brand} helps businesses improve local visibility by combining technical SEO, useful service content, strong internal linking, and an active Google Business Profile. This guide explains how a real business in ${city || "your city"} can turn ${topic} into calls, enquiries, and better search visibility.`,
         "",
         "## Why this topic matters",
         `People searching for ${topic} are usually comparing options, checking trust, and looking for a clear reason to contact a business. A strong article should answer those questions before the visitor leaves the page.`,
@@ -40,13 +39,13 @@ function fallbackContent({ businessName, city, services, keyword, title }) {
         "Yes, but the article should still read naturally. The goal is to answer the user intent better than competing pages.",
         "",
         "### What should be the next step?",
-        `Book a practical audit with ${businessName || "the team"} and identify the pages, keywords, and Google Business improvements that can create the quickest gains.`,
+        `Book a practical audit with ${brand} and identify the pages, keywords, and Google Business improvements that can create the quickest gains.`,
       ].join("\n"),
     },
     gmbPosts: [
       {
         topicType: "STANDARD",
-        summary: `${businessName || "We"} help ${city || "local"} businesses grow with ${serviceText}. Book a quick SEO audit and see what is stopping calls, clicks, and rankings.`,
+        summary: `${brand} helps ${city || "local"} businesses grow with ${serviceText}. Book a quick SEO audit and see what is stopping calls, clicks, and rankings.`,
         cta: "LEARN_MORE",
       },
       {
@@ -55,7 +54,7 @@ function fallbackContent({ businessName, city, services, keyword, title }) {
         cta: "CALL",
       },
     ],
-    imagePrompt: `Realistic high-quality featured image for the blog titled "${blogTitle}", Indian business owner and digital marketing team reviewing website analytics, modern office, natural light, no text overlay.`,
+    imagePrompt: `Realistic high-quality featured image for the blog titled "${blogTitle}", UnnatiX digital marketing team reviewing website analytics with an Indian business owner, modern office, natural light, no text overlay.`,
   };
 }
 
@@ -199,6 +198,10 @@ Target keyword/topic: ${input.keyword || "local SEO"}
 ${input.extraKeywords?.length ? `Extra keywords to include naturally: ${input.extraKeywords.join(", ")}` : ""}
 Tone: practical, trustworthy, Indian market friendly.
 ${keywordInstruction()}
+Main brand keyword: UnnatiX. Include "UnnatiX" naturally in the introduction, service explanation, CTA, and at least one FAQ answer.
+Do not include an H1 or repeat the blog title inside the article body because WordPress already has the title field.
+Do not duplicate sections, introductions, paragraphs, or question blocks. Every section must add new information.
+Write a complete, polished, buyer-focused article with specific examples and no filler.
 
 Return only valid JSON:
 {
@@ -222,6 +225,7 @@ Rules:
 - Make titles useful for real buyers, not clickbait.
 - Include local SEO intent where relevant.
 - Every blog must have one primary keyword and 4-7 secondary keywords.
+- Include "UnnatiX" in secondaryKeywords for every blog because it is the main brand keyword.
 - Include commercial, informational, and local intent across the whole plan.
 - Meta title must be under 60 characters where possible.
 - Meta description must be under 155 characters where possible.
@@ -343,6 +347,7 @@ function normalizePlan(result, input) {
       const secondaryKeywords = Array.isArray(item.secondaryKeywords)
         ? item.secondaryKeywords.map((keyword) => String(keyword).trim()).filter(Boolean)
         : [];
+      if (!secondaryKeywords.some((keyword) => keyword.toLowerCase() === "unnatix")) secondaryKeywords.unshift("UnnatiX");
       return {
         date: /^\d{4}-\d{2}-\d{2}$/.test(String(item.date || "")) ? item.date : fallbackDate.toISOString().slice(0, 10),
         title,

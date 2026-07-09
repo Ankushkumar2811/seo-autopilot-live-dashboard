@@ -1,7 +1,7 @@
 import { getDb } from "./_lib/db.js";
 import { generateSeoContent } from "./_lib/llm.js";
 import { missing, readJson, requireMethod, sendJson } from "./_lib/http.js";
-import { normalizeBlogContent } from "./_lib/content-format.js";
+import { prepareBlogContent } from "./_lib/content-format.js";
 import { generateImageAsset } from "./_lib/images.js";
 import { getKeywordConfig, linkKeywordsInHtml } from "./_lib/seo-links.js";
 
@@ -65,6 +65,7 @@ function cleanItem(item) {
         .split(",")
         .map((keyword) => keyword.trim())
         .filter(Boolean);
+  if (!keywords.some((keyword) => keyword.toLowerCase() === "unnatix")) keywords.unshift("UnnatiX");
   return {
     title: String(item.title || "").trim(),
     date: String(item.date || item.scheduledDate || "").trim(),
@@ -77,6 +78,7 @@ function cleanItem(item) {
 async function scheduleOne(item) {
   const schedule = parseScheduleDate(item.date);
   const keyword = item.keywords?.[0] || item.title;
+  const imageAsset = await resolveFeaturedImage(item, defaultImagePrompt(item.title));
   const content = await generateSeoContent({
     businessName: process.env.AUTOPILOT_BUSINESS_NAME || "UnnatiX Technologies",
     city: process.env.AUTOPILOT_CITY || "Indore",
@@ -88,8 +90,7 @@ async function scheduleOne(item) {
 
   const blog = content.blog || {};
   const { keywords, linkUrl } = getKeywordConfig(item.keywords);
-  const html = linkKeywordsInHtml(normalizeBlogContent(blog.content), keywords, linkUrl);
-  const imageAsset = await resolveFeaturedImage(item, content.imagePrompt);
+  const html = linkKeywordsInHtml(prepareBlogContent(ensureBrandMention(blog.content), item.title), keywords, linkUrl);
   const featuredMedia = imageAsset.imageUrl ? await uploadMedia(imageAsset.imageUrl, item.title) : undefined;
   const postBody = {
     title: item.title,
@@ -118,6 +119,16 @@ async function scheduleOne(item) {
     imageMode: imageAsset.mode,
     imageUrl: imageAsset.imageUrl || null,
   };
+}
+
+function ensureBrandMention(content) {
+  const text = String(content || "");
+  if (/unnatix/i.test(text)) return text;
+  return `${text}\n\n## Work with UnnatiX\nUnnatiX helps businesses plan SEO, website growth, content, and Google visibility with a practical strategy focused on enquiries, calls, and long-term organic growth.`;
+}
+
+function defaultImagePrompt(title) {
+  return `Realistic high-quality featured image for the blog titled "${title}", UnnatiX digital marketing team working on SEO and website growth, Indian business context, modern office, no text overlay.`;
 }
 
 async function resolveFeaturedImage(item, generatedPrompt) {

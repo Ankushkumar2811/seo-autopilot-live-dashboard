@@ -67,6 +67,41 @@ export function normalizeBlogContent(content) {
   return markdownToHtml(content);
 }
 
+export function prepareBlogContent(content, title = "") {
+  const html = normalizeBlogContent(content);
+  return removeRepeatedBlocks(removeDuplicateTitle(html, title));
+}
+
+function removeDuplicateTitle(html, title) {
+  if (!title) return html;
+  const normalizedTitle = normalizeText(title);
+  return html.replace(/^\s*<h1[^>]*>(.*?)<\/h1>\s*/i, (match, heading) => {
+    return normalizeText(stripTags(heading)) === normalizedTitle ? "" : match;
+  });
+}
+
+function removeRepeatedBlocks(html) {
+  const seen = new Set();
+  return html
+    .split(/\n+/)
+    .filter((block) => {
+      const key = normalizeText(stripTags(block));
+      if (!key || key.length < 80) return true;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .join("\n");
+}
+
+function normalizeText(value) {
+  return String(value || "").toLowerCase().replace(/\s+/g, " ").replace(/[^a-z0-9 ]/g, "").trim();
+}
+
+function stripTags(value) {
+  return String(value || "").replace(/<[^>]+>/g, "");
+}
+
 function inline(value) {
   return escapeHtml(value)
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")

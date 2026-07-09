@@ -1,5 +1,5 @@
 import { missing, readJson, requireMethod, sendJson } from "./_lib/http.js";
-import { normalizeBlogContent } from "./_lib/content-format.js";
+import { prepareBlogContent } from "./_lib/content-format.js";
 import { getKeywordConfig, linkKeywordsInHtml } from "./_lib/seo-links.js";
 
 export default async function handler(req, res) {
@@ -14,7 +14,7 @@ export default async function handler(req, res) {
 
   try {
     const { keywords, linkUrl } = getKeywordConfig(extraKeywords || []);
-    const linkedContent = linkKeywordsInHtml(normalizeBlogContent(content), keywords, linkUrl);
+    const linkedContent = linkKeywordsInHtml(prepareBlogContent(ensureBrandMention(content), title), keywords, linkUrl);
     let featuredMedia;
     if (imageUrl) {
       featuredMedia = await uploadMedia(imageUrl, title);
@@ -38,6 +38,12 @@ export default async function handler(req, res) {
   } catch (error) {
     sendJson(res, 500, { ok: false, error: "wordpress_publish_failed", message: error.message });
   }
+}
+
+function ensureBrandMention(content) {
+  const text = String(content || "");
+  if (/unnatix/i.test(text)) return text;
+  return `${text}\n\n## Work with UnnatiX\nUnnatiX helps businesses plan SEO, website growth, content, and Google visibility with a practical strategy focused on enquiries, calls, and long-term organic growth.`;
 }
 
 async function uploadMedia(imageUrl, title) {
