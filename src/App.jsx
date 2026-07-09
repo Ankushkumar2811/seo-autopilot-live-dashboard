@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 
 const STORAGE_KEY = "unnatix-seo-autopilot-live-v2";
+const USED_TITLES_KEY = "unnatix-seo-autopilot-used-blog-titles-v1";
 
 const healthTemplate = [
   { id: "h1", category: "Technical", label: "Mobile Core Web Vitals checked", impact: 10, done: true },
@@ -119,6 +120,21 @@ function today() {
 
 function uid(prefix) {
   return `${prefix}${Date.now()}${Math.floor(Math.random() * 1000)}`;
+}
+
+function loadUsedTitles() {
+  try {
+    const raw = localStorage.getItem(USED_TITLES_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveUsedTitles(titles) {
+  const clean = Array.from(new Set(titles.map((title) => String(title || "").trim()).filter(Boolean))).slice(-1000);
+  localStorage.setItem(USED_TITLES_KEY, JSON.stringify(clean));
+  return clean;
 }
 
 export default function App() {
@@ -392,12 +408,18 @@ function BlogScheduler({ schedules, onChange }) {
   const [planMessage, setPlanMessage] = useState("");
   const [planItems, setPlanItems] = useState([]);
   const [selectedPlan, setSelectedPlan] = useState({});
+  const [usedTitles, setUsedTitles] = useState(loadUsedTitles);
   const [bulkText, setBulkText] = useState("");
   const [busy, setBusy] = useState(false);
   const [results, setResults] = useState([]);
   const [message, setMessage] = useState("");
 
   const pending = schedules.filter((item) => !item.postId && item.status !== "scheduled");
+  const excludedTitles = [...usedTitles, ...schedules.map((item) => item.title)];
+
+  function rememberTitles(titles) {
+    setUsedTitles(saveUsedTitles([...loadUsedTitles(), ...titles]));
+  }
 
   function addOne() {
     if (!draft.title.trim() || !draft.date) return;
@@ -411,6 +433,7 @@ function BlogScheduler({ schedules, onChange }) {
         status: "queued",
       },
     ]);
+    rememberTitles([draft.title.trim()]);
     setDraft({ date: "", title: "", keywords: "" });
   }
 
@@ -426,6 +449,7 @@ function BlogScheduler({ schedules, onChange }) {
       .filter(Boolean);
     if (!items.length) return;
     onChange([...schedules, ...items]);
+    rememberTitles(items.map((item) => item.title));
     setBulkText("");
   }
 
@@ -436,7 +460,10 @@ function BlogScheduler({ schedules, onChange }) {
     setPlanItems([]);
     setSelectedPlan({});
     try {
-      const response = await api("/api/generate-blog-plan", planInput);
+      const response = await api("/api/generate-blog-plan", {
+        ...planInput,
+        excludeTitles: excludedTitles,
+      });
       const nextPlan = response.plan || [];
       setPlanItems(nextPlan);
       setSelectedPlan(Object.fromEntries(nextPlan.map((item, index) => [index, true])));
@@ -463,6 +490,7 @@ function BlogScheduler({ schedules, onChange }) {
       }));
     if (!selected.length) return;
     onChange([...schedules, ...selected]);
+    rememberTitles(selected.map((item) => item.title));
     setPlanMessage(`${selected.length} blogs added to queue.`);
   }
 
@@ -479,6 +507,7 @@ function BlogScheduler({ schedules, onChange }) {
           keywords: item.keywords,
         })),
       });
+      rememberTitles(pending.map((item) => item.title));
       setResults(response.results || []);
       const next = schedules.map((item) => {
         const result = response.results?.find((row) => row.title === item.title);
@@ -515,7 +544,7 @@ function BlogScheduler({ schedules, onChange }) {
         <div className="seo-plan-form">
           <input value={planInput.topic} onChange={(event) => setPlanInput({ ...planInput, topic: event.target.value })} placeholder="Service/topic e.g. SEO services" />
           <input value={planInput.city} onChange={(event) => setPlanInput({ ...planInput, city: event.target.value })} placeholder="City e.g. Indore" />
-          <input type="number" min="1" max="10" value={planInput.count} onChange={(event) => setPlanInput({ ...planInput, count: Number(event.target.value) })} />
+          <input type="number" min="1" max="50" value={planInput.count} onChange={(event) => setPlanInput({ ...planInput, count: Number(event.target.value) })} title="Number of ideas" />
           <input type="date" value={planInput.startDate} onChange={(event) => setPlanInput({ ...planInput, startDate: event.target.value })} />
           <input type="number" min="1" max="30" value={planInput.cadenceDays} onChange={(event) => setPlanInput({ ...planInput, cadenceDays: Number(event.target.value) })} title="Days between blogs" />
         </div>

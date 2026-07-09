@@ -35,10 +35,11 @@ function normalizeInput(body) {
     city: clean(body.city || process.env.AUTOPILOT_CITY || "Indore"),
     topic: clean(body.topic || body.service || body.keyword || ""),
     services: clean(body.services || process.env.AUTOPILOT_SERVICES || ""),
-    count: Math.min(10, Math.max(1, Number(body.count || 5))),
+    count: Math.min(50, Math.max(1, Number(body.count || 5))),
     startDate: clean(body.startDate || ""),
     cadenceDays: Math.min(30, Math.max(1, Number(body.cadenceDays || 3))),
     linkUrl: keywordConfig.linkUrl,
+    excludeTitles: Array.isArray(body.excludeTitles) ? body.excludeTitles.map(clean).filter(Boolean).slice(0, 500) : [],
   };
 }
 

@@ -14,7 +14,7 @@ export default async function handler(req, res) {
   const body = await readJson(req);
   const items = normalizeItems(body);
   if (!items.length) return sendJson(res, 400, { ok: false, error: "posts_required" });
-  if (items.length > 10) return sendJson(res, 400, { ok: false, error: "too_many_posts", message: "Schedule max 10 blogs per request." });
+  if (items.length > 50) return sendJson(res, 400, { ok: false, error: "too_many_posts", message: "Schedule max 50 blogs per request." });
 
   const results = [];
   for (const item of items) {

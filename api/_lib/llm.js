@@ -69,10 +69,10 @@ export async function generateBlogPlan(input) {
   for (const provider of providerOrder) {
     try {
       if (provider === "openai" && process.env.OPENAI_API_KEY) {
-        return await generatePlanWithOpenAI(input);
+        return fillPlan(await generatePlanWithOpenAI(input), input);
       }
       if (provider === "gemini" && process.env.GEMINI_API_KEY) {
-        return await generatePlanWithGemini(input);
+        return fillPlan(await generatePlanWithGemini(input), input);
       }
     } catch (error) {
       console.error(`${provider} blog plan failed`, error.message);
@@ -80,6 +80,20 @@ export async function generateBlogPlan(input) {
   }
 
   return fallbackBlogPlan(input);
+}
+
+function fillPlan(result, input) {
+  const count = clampCount(input.count);
+  if ((result.plan || []).length >= count) return result;
+  const supplement = fallbackBlogPlan({
+    ...input,
+    count: count - (result.plan || []).length,
+    excludeTitles: [...(input.excludeTitles || []), ...(result.plan || []).map((item) => item.title)],
+  });
+  return {
+    provider: result.provider,
+    plan: [...(result.plan || []), ...supplement.plan].slice(0, count),
+  };
 }
 
 async function generateWithOpenAI(input) {
@@ -192,6 +206,7 @@ Rules:
 - Meta description must be under 155 characters where possible.
 - Return dates in YYYY-MM-DD format.
 - Avoid duplicate keywords and repeated title patterns.
+${input.excludeTitles?.length ? `- Do not use these already generated or scheduled titles: ${input.excludeTitles.slice(0, 120).join(" | ")}` : ""}
 
 Return only valid JSON:
 {
@@ -270,15 +285,18 @@ function fallbackBlogPlan(input) {
   const cadence = Math.max(1, Number(input.cadenceDays || 3));
   return normalizePlan({
     provider: "fallback",
-    plan: Array.from({ length: count }, (_, index) => {
+    plan: Array.from({ length: count + normalizeTitleList(input.excludeTitles).length + 20 }, (_, index) => {
       const base = templates[index % templates.length];
       const date = new Date(start);
       date.setDate(start.getDate() + index * cadence);
+      const cycle = Math.floor(index / templates.length);
+      const title = cycle ? addTitleVariant(base.title, cycle) : base.title;
       return {
         ...base,
+        title,
         date: date.toISOString().slice(0, 10),
-        slug: slug(base.title),
-        metaTitle: base.title.slice(0, 58),
+        slug: slug(title),
+        metaTitle: title.slice(0, 58),
         metaDescription: `Learn how ${base.primaryKeyword} can improve visibility, leads, and local search growth for ${city} businesses.`,
         outline: ["Search intent and buyer problem", "SEO action plan", "Local proof and next steps"],
       };
@@ -289,10 +307,12 @@ function fallbackBlogPlan(input) {
 function normalizePlan(result, input) {
   const start = parseDate(input.startDate);
   const cadence = Math.max(1, Number(input.cadenceDays || 3));
+  const excluded = new Set(normalizeTitleList(input.excludeTitles));
+  const seen = new Set();
   const plan = Array.isArray(result.plan) ? result.plan : [];
   return {
     provider: result.provider || "unknown",
-    plan: plan.slice(0, clampCount(input.count)).map((item, index) => {
+    plan: plan.map((item, index) => {
       const fallbackDate = new Date(start);
       fallbackDate.setDate(start.getDate() + index * cadence);
       const title = String(item.title || `SEO Blog ${index + 1}`).trim();
@@ -310,12 +330,17 @@ function normalizePlan(result, input) {
         metaDescription: String(item.metaDescription || "").trim(),
         outline: Array.isArray(item.outline) ? item.outline.map((heading) => String(heading).trim()).filter(Boolean) : [],
       };
-    }),
+    }).filter((item) => {
+      const key = normalizeTitle(item.title);
+      if (!key || excluded.has(key) || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, clampCount(input.count)),
   };
 }
 
 function clampCount(value) {
-  return Math.min(10, Math.max(1, Number(value || 5)));
+  return Math.min(50, Math.max(1, Number(value || 5)));
 }
 
 function parseDate(value) {
@@ -337,4 +362,23 @@ function slug(value) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 80);
+}
+
+function normalizeTitleList(values = []) {
+  return values.map(normalizeTitle).filter(Boolean);
+}
+
+function normalizeTitle(value) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function addTitleVariant(title, cycle) {
+  const variants = [
+    "Advanced Guide",
+    "Mistakes to Avoid",
+    "Step by Step Plan",
+    "Buyer Checklist",
+    "Growth Playbook",
+  ];
+  return `${title}: ${variants[(cycle - 1) % variants.length]}`;
 }
