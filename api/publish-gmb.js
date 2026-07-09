@@ -1,8 +1,11 @@
 import { missing, readJson, requireMethod, sendJson } from "./_lib/http.js";
+import { getGoogleAccessToken, normalizeAccountId, normalizeLocationId } from "./_lib/google-oauth.js";
 
 export default async function handler(req, res) {
   if (!requireMethod(req, res, ["POST"])) return;
-  const missingKeys = missing(["GOOGLE_GBP_ACCESS_TOKEN", "GBP_ACCOUNT_ID", "GBP_LOCATION_ID"]);
+  const missingKeys = missing(["GBP_ACCOUNT_ID", "GBP_LOCATION_ID"]);
+  const hasToken = process.env.GOOGLE_GBP_ACCESS_TOKEN || process.env.GOOGLE_GBP_REFRESH_TOKEN;
+  if (!hasToken) missingKeys.unshift("GOOGLE_GBP_REFRESH_TOKEN");
   if (missingKeys.length) {
     return sendJson(res, 428, {
       ok: false,
@@ -24,12 +27,15 @@ export default async function handler(req, res) {
       media: imageUrl ? [{ mediaFormat: "PHOTO", sourceUrl: imageUrl }] : undefined,
     };
 
-    const endpoint = `https://mybusiness.googleapis.com/v4/accounts/${process.env.GBP_ACCOUNT_ID}/locations/${process.env.GBP_LOCATION_ID}/localPosts`;
+    const account = normalizeAccountId(process.env.GBP_ACCOUNT_ID);
+    const location = normalizeLocationId(process.env.GBP_LOCATION_ID);
+    const accessToken = await getGoogleAccessToken();
+    const endpoint = `https://mybusiness.googleapis.com/v4/${account}/${location}/localPosts`;
     const response = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.GOOGLE_GBP_ACCESS_TOKEN}`,
+        Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify(body),
     });
