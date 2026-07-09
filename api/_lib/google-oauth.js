@@ -14,7 +14,7 @@ export function googleRedirectUri(req) {
   if (process.env.GOOGLE_GBP_REDIRECT_URI) return process.env.GOOGLE_GBP_REDIRECT_URI;
   const host = req.headers.host;
   const protocol = req.headers["x-forwarded-proto"] || "https";
-  return `${protocol}://${host}/api/google-callback`;
+  return `${protocol}://${host}/api/gbp?action=callback`;
 }
 
 export async function getGoogleAccessToken() {
