@@ -328,6 +328,11 @@ h1 {
   margin-top: 18px;
 }
 
+.action-list.compact-list {
+  margin-top: 0;
+  gap: 6px;
+}
+
 .action-item {
   display: flex;
   align-items: center;
@@ -400,6 +405,14 @@ h1 {
   margin-top: 4px;
   color: var(--muted);
   font-size: 13px;
+}
+
+.data-row small {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .chip {

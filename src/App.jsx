@@ -289,7 +289,7 @@ export default function App() {
         {tab === "posts" && <Posts posts={posts} onChange={(next) => setCollection("posts", next)} />}
         {tab === "scheduler" && <BlogScheduler schedules={blogSchedules} onChange={(next) => setCollection("blogSchedules", next)} />}
         {tab === "content" && <Content ideas={ideas} client={activeClient} onChange={(next) => setCollection("contentIdeas", next)} />}
-        {tab === "backlinks" && <Backlinks backlinks={backlinks} onChange={(next) => setCollection("backlinks", next)} />}
+        {tab === "backlinks" && <Backlinks backlinks={backlinks} client={activeClient} onChange={(next) => setCollection("backlinks", next)} />}
         {tab === "health" && <Health items={health} score={metrics.healthScore} onChange={(next) => setCollection("health", next)} />}
         {tab === "autopilot" && <Autopilot client={activeClient} onSaveIdea={(idea) => setCollection("contentIdeas", [idea, ...ideas])} />}
       </main>
@@ -658,16 +658,79 @@ function Content({ ideas, client, onChange }) {
   );
 }
 
-function Backlinks({ backlinks, onChange }) {
+function Backlinks({ backlinks, client, onChange }) {
   const [draft, setDraft] = useState({ site: "", url: "", authority: 30 });
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [runResult, setRunResult] = useState(null);
   const statuses = ["identified", "contacted", "approved", "live"];
   function add() {
     if (!draft.site.trim()) return;
     onChange([{ id: uid("b"), ...draft, site: draft.site.trim(), status: "identified", date: today() }, ...backlinks]);
     setDraft({ site: "", url: "", authority: 30 });
   }
+
+  async function runAutopilot() {
+    setBusy(true);
+    setMessage("");
+    try {
+      const result = await api("/api/backlink-autopilot", {
+        businessName: client.name,
+        city: client.city,
+        websiteUrl: client.websiteUrl,
+        services: client.services,
+        keywords: client.services,
+        existingSites: backlinks.map((item) => item.site),
+      });
+      const prospects = (result.prospects || []).map((item) => ({
+        id: uid("b"),
+        site: item.site,
+        url: item.url,
+        authority: item.authority,
+        status: item.status,
+        date: item.date,
+        type: item.type,
+        priority: item.priority,
+        action: item.action,
+        anchorIdeas: item.anchorIdeas,
+        outreach: item.outreach,
+        submissionData: item.submissionData,
+      }));
+      onChange([...prospects, ...backlinks]);
+      setRunResult(result);
+      setMessage(`${prospects.length} backlink/citation opportunities queued.`);
+    } catch (error) {
+      setMessage(error.message || "Backlink autopilot failed");
+    }
+    setBusy(false);
+  }
+
+  function copyOutreach(item) {
+    const text = item.outreach ? `Subject: ${item.outreach.subject}\n\n${item.outreach.body}` : item.action || "";
+    navigator.clipboard?.writeText(text);
+    setMessage(`Copied outreach for ${item.site}`);
+  }
+
   return (
     <CrudPanel title="Backlink and citation tracker" description="Track genuine directories, partner mentions, local citations, and editorial outreach from prospect to live link.">
+      <div className="seo-plan-panel">
+        <div className="seo-plan-header">
+          <div>
+            <strong>One-click backlink autopilot</strong>
+            <span>Creates safe citation, profile, partner, and outreach tasks with submission data and email drafts.</span>
+          </div>
+          <button className="primary-button" disabled={busy} onClick={runAutopilot}>
+            <Link2 size={16} /> {busy ? "Building..." : "Run autopilot"}
+          </button>
+        </div>
+        {message && <div className="notice">{message}</div>}
+        {runResult?.nextActions?.length > 0 && (
+          <div className="action-list compact-list">
+            {runResult.nextActions.map((action) => <div className="action-item" key={action}><ChevronRight size={16} /> {action}</div>)}
+          </div>
+        )}
+      </div>
+
       <div className="form-row">
         <input value={draft.site} onChange={(event) => setDraft({ ...draft, site: event.target.value })} placeholder="Website or directory" />
         <input value={draft.url} onChange={(event) => setDraft({ ...draft, url: event.target.value })} placeholder="URL" />
@@ -677,8 +740,15 @@ function Backlinks({ backlinks, onChange }) {
       <ListEmpty items={backlinks} text="No backlink prospect yet." />
       {backlinks.map((item) => (
         <div className="data-row" key={item.id}>
-          <div><strong>{item.site}</strong><span>{item.url || "URL pending"} · DA {item.authority} · {item.date}</span></div>
+          <div>
+            <strong>{item.site}</strong>
+            <span>{item.url || "URL pending"} · DA {item.authority} · {item.date}</span>
+            {item.action && <small>{item.action}</small>}
+            {item.anchorIdeas?.length > 0 && <small>Anchors: {item.anchorIdeas.join(", ")}</small>}
+          </div>
           <button className={item.status === "live" ? "chip success" : "chip"} onClick={() => onChange(backlinks.map((row) => row.id === item.id ? { ...row, status: statuses[(statuses.indexOf(row.status) + 1) % statuses.length] } : row))}>{item.status}</button>
+          {item.url && <a className="icon-button" href={item.url} target="_blank" rel="noreferrer" title="Open prospect"><ExternalLink size={16} /></a>}
+          {item.outreach && <button className="icon-button" onClick={() => copyOutreach(item)} title="Copy outreach"><Copy size={16} /></button>}
           <button className="icon-button danger" onClick={() => onChange(backlinks.filter((row) => row.id !== item.id))} title="Delete"><Trash2 size={16} /></button>
         </div>
       ))}
