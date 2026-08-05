@@ -26,5 +26,8 @@ export function enforceSameOrigin(req) {
   if (!origin) return;
   const config = getConfig();
   const allowed = new Set([config.app.url, ...config.app.allowedOrigins].map((value) => value.replace(/\/$/, "")));
+  const forwardedHost = String(req.headers?.["x-forwarded-host"] || req.headers?.host || "").split(",")[0].trim();
+  const forwardedProto = String(req.headers?.["x-forwarded-proto"] || "https").split(",")[0].trim();
+  if (forwardedHost) allowed.add(`${forwardedProto}://${forwardedHost}`);
   if (!allowed.has(String(origin).replace(/\/$/, ""))) throw new AuthorizationError("Cross-origin request denied");
 }
