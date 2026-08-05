@@ -146,9 +146,10 @@ function Dashboard({ user, onLogout }) {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("gbp") !== "connected") return;
+    const status = params.get("gbp");
+    if (!status) return;
     setTab("local-command");
-    setSaveMessage(`Google Business Profile connected · account ${params.get("accountId") || "saved"} · location ${params.get("locationId") || "saved"}`);
+    setSaveMessage(status === "connected" ? `Google Business Profile connected · account ${params.get("accountId") || "saved"} · location ${params.get("locationId") || "saved"}` : status === "api_approval_required" ? "Google authorization succeeded, but this Cloud project still has zero GBP API quota. Submit/complete Google Business Profile API access approval, then reconnect." : "Google authorization succeeded, but account/location discovery failed. Check GBP API access and profile permissions.");
     window.history.replaceState({}, "", window.location.pathname);
   }, []);
 

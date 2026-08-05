@@ -6,6 +6,7 @@ import { AuthorizationError } from "../lib/errors.js";
 import { hasPermission } from "../security/permissions.js";
 import { getDb } from "../services/database.js";
 import { logActivity } from "../services/activity-service.js";
+import { safeRequestUrl } from "../security/safe-request-url.js";
 
 export function withApiHandler(handler, options = {}) {
   return async function apiHandler(req, res) {
@@ -20,7 +21,7 @@ export function withApiHandler(handler, options = {}) {
         try { await logActivity(await getDb(), req.context.identity, options.activityAction, { path: req.url }); }
         catch (error) { logger.warn("activity_log_failed", { requestId, action: options.activityAction, error }); }
       }
-      logger.info("api_request_completed", { requestId, method: req.method, url: req.url, status: res.statusCode, durationMs: Date.now() - startedAt });
+      logger.info("api_request_completed", { requestId, method: req.method, url: safeRequestUrl(req.url), status: res.statusCode, durationMs: Date.now() - startedAt });
     } catch (error) {
       if (!res.writableEnded) handleApiError(error, req, res, requestId);
       else logger.error("api_post_response_error", { requestId, error });

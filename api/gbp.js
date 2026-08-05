@@ -73,13 +73,29 @@ async function handleCallback(req, res, url) {
   if (db) {
     const tenant = tenantContext(req.context.identity);
     const clientId = ObjectId.isValid(state.clientId) ? new ObjectId(state.clientId) : null;
-    const discovery = await discoverGbp(token.access_token);
     const now = new Date();
     await db.collection("googleOAuthTokens").updateOne(
       { organizationId: tenant.organizationId, clientId },
-      { $set: { scope: GBP_SCOPE, hasRefreshToken: Boolean(token.refresh_token), encryptedCredentials: encryptSecret({ accessToken: token.access_token, refreshToken: token.refresh_token }), expiresIn: token.expires_in, expiresAt: new Date(Date.now() + Number(token.expires_in || 3600) * 1000), accountId: discovery.accountId, locationId: discovery.locationId, updatedAt: now }, $setOnInsert: { organizationId: tenant.organizationId, clientId, createdBy: tenant.userId, createdAt: now } },
+      { $set: { scope: GBP_SCOPE, hasRefreshToken: Boolean(token.refresh_token), encryptedCredentials: encryptSecret({ accessToken: token.access_token, refreshToken: token.refresh_token }), expiresIn: token.expires_in, expiresAt: new Date(Date.now() + Number(token.expires_in || 3600) * 1000), updatedAt: now }, $setOnInsert: { organizationId: tenant.organizationId, clientId, createdBy: tenant.userId, createdAt: now } },
       { upsert: true },
     );
+    let discovery;
+    try {
+      discovery = await discoverGbp(token.access_token);
+    } catch (error) {
+      const quotaRequired = /quota exceeded|requests per minute/i.test(error.message);
+      await db.collection("integrations").updateOne(
+        { organizationId: tenant.organizationId, provider: "google_business_profile", clientId },
+        { $set: { status: quotaRequired ? "api_approval_required" : "discovery_failed", error: error.message.slice(0, 500), updatedAt: now }, $setOnInsert: { organizationId: tenant.organizationId, clientId, provider: "google_business_profile", createdBy: tenant.userId, createdAt: now } },
+        { upsert: true },
+      );
+      const target = new URL("/", `${url.protocol}//${url.host}`);
+      target.searchParams.set("gbp", quotaRequired ? "api_approval_required" : "discovery_failed");
+      res.statusCode = 302;
+      res.setHeader("Location", target.toString());
+      return res.end();
+    }
+    await db.collection("googleOAuthTokens").updateOne({ organizationId: tenant.organizationId, clientId }, { $set: { accountId: discovery.accountId, locationId: discovery.locationId, updatedAt: now } });
     await db.collection("integrations").updateOne(
       { organizationId: tenant.organizationId, provider: "google_business_profile", clientId },
       { $set: { status: "connected", accountId: discovery.accountId, locationId: discovery.locationId, accountName: discovery.accountName, locationName: discovery.locationName, connectedAt: now, updatedAt: now }, $setOnInsert: { organizationId: tenant.organizationId, clientId, provider: "google_business_profile", createdBy: tenant.userId, createdAt: now } },
