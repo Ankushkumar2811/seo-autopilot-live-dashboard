@@ -51,7 +51,7 @@ const seedData = {
       name: "UnnatiX Technologies",
       type: "Digital marketing agency",
       city: "Indore",
-      websiteUrl: "https://unnatix.com",
+      websiteUrl: "https://unnatix.in",
       services: "SEO, website development, Google Business Profile management",
       gmbUrl: "https://g.page/r/example-review-link",
       goal: "Rank in local map pack for SEO and website services",
