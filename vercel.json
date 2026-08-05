@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/agent-worker",
-      "schedule": "*/10 * * * *"
+      "schedule": "15 2 * * *"
     }
   ]
 }
