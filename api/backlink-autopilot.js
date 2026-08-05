@@ -1,5 +1,8 @@
 import { getDb } from "./_lib/db.js";
 import { readJson, requireMethod, sendJson } from "./_lib/http.js";
+import { withApiHandler } from "../backend/middleware/api-handler.js";
+import { Permissions } from "../backend/security/permissions.js";
+import { tenantContext } from "../backend/middleware/tenant.js";
 
 const BASE_PROSPECTS = [
   { site: "Google Business Profile website link", url: "https://business.google.com", authority: 95, type: "local-profile", action: "Keep website, services, photos, posts, and review link updated." },
@@ -19,7 +22,7 @@ const BASE_PROSPECTS = [
   { site: "Partner/Vendor Mentions", url: "", authority: 50, type: "relationship-link", action: "Ask vendors, clients, and partners for genuine resource or testimonial mentions." },
 ];
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (!requireMethod(req, res, ["POST"])) return;
   const body = await readJson(req);
   const input = normalizeInput(body);
@@ -42,11 +45,14 @@ export default async function handler(req, res) {
 
   const db = await getDb();
   if (db) {
-    await db.collection("backlinkAutopilotRuns").insertOne({ input, run, createdAt: new Date() });
+    const tenant = tenantContext(req.context.identity);
+    await db.collection("backlinkAutopilotRuns").insertOne({ organizationId: tenant.organizationId, createdBy: tenant.userId, input, run, createdAt: new Date(), updatedAt: new Date() });
   }
 
   sendJson(res, 200, run);
 }
+
+export default withApiHandler(handler, { authRequired: true, permission: Permissions.SEO_MANAGE, activityAction: "backlink_autopilot_run" });
 
 function normalizeInput(body) {
   return {

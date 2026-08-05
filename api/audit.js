@@ -1,24 +1,31 @@
 import { getDb } from "./_lib/db.js";
 import { readJson, requireMethod, sendJson } from "./_lib/http.js";
+import { withApiHandler } from "../backend/middleware/api-handler.js";
+import { Permissions } from "../backend/security/permissions.js";
+import { tenantContext } from "../backend/middleware/tenant.js";
+import { safePublicFetch } from "../backend/security/safe-fetch.js";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (!requireMethod(req, res, ["POST"])) return;
   const { url, clientId } = await readJson(req);
   if (!url) return sendJson(res, 400, { ok: false, error: "url_required" });
 
   try {
     const normalized = normalizeUrl(url);
-    const response = await fetch(normalized, { redirect: "follow" });
+    const response = await safePublicFetch(normalized, { timeoutMs: 12000 });
     const html = await response.text();
     const audit = buildAudit(normalized, response, html);
 
     const db = await getDb();
     if (db) {
+      const tenant = tenantContext(req.context.identity);
       await db.collection("audits").insertOne({
+        organizationId: tenant.organizationId, createdBy: tenant.userId,
         clientId: clientId || null,
         url: normalized,
         audit,
         createdAt: new Date(),
+        updatedAt: new Date(),
       });
     }
 
@@ -27,6 +34,8 @@ export default async function handler(req, res) {
     sendJson(res, 500, { ok: false, error: "audit_failed", message: error.message });
   }
 }
+
+export default withApiHandler(handler, { authRequired: true, permission: Permissions.AUDIT_RUN, activityAction: "audit_started" });
 
 function normalizeUrl(url) {
   return /^https?:\/\//i.test(url) ? url : `https://${url}`;

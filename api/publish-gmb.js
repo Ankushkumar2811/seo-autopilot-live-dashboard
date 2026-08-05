@@ -1,7 +1,9 @@
 import { missing, readJson, requireMethod, sendJson } from "./_lib/http.js";
 import { getGoogleAccessToken, normalizeAccountId, normalizeLocationId } from "./_lib/google-oauth.js";
+import { withApiHandler } from "../backend/middleware/api-handler.js";
+import { Permissions } from "../backend/security/permissions.js";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (!requireMethod(req, res, ["POST"])) return;
   const missingKeys = missing(["GBP_ACCOUNT_ID", "GBP_LOCATION_ID"]);
   const hasToken = process.env.GOOGLE_GBP_ACCESS_TOKEN || process.env.GOOGLE_GBP_REFRESH_TOKEN;
@@ -46,3 +48,5 @@ export default async function handler(req, res) {
     sendJson(res, 500, { ok: false, error: "gmb_publish_failed", message: error.message });
   }
 }
+
+export default withApiHandler(handler, { authRequired: true, permission: Permissions.PUBLISH, activityAction: "gbp_publish" });

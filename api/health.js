@@ -1,27 +1,34 @@
-import { getDb } from "./_lib/db.js";
+import { checkDatabase } from "./_lib/db.js";
 import { sendJson } from "./_lib/http.js";
+import { getConfig, validateEnvironment } from "../backend/config/env.js";
+import { withApiHandler } from "../backend/middleware/api-handler.js";
 
-export default async function handler(req, res) {
-  let database = "not_configured";
+async function healthHandler(req, res) {
+  let database = { status: "not_configured" };
   try {
-    const db = await getDb();
-    if (db) {
-      await db.command({ ping: 1 });
-      database = "connected";
-    }
+    database = await checkDatabase();
   } catch (error) {
-    database = `error:${error.message}`;
+    database = { status: "error" };
   }
+
+  const config = getConfig();
+  const environment = validateEnvironment({ strict: false });
 
   sendJson(res, 200, {
     ok: true,
-    database,
+    database: database.status,
+    databaseDetails: database,
+    environment: { valid: environment.valid, warnings: environment.warnings },
     integrations: {
-      llm: Boolean(process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY),
-      wordpress: Boolean(process.env.WP_SITE_URL && process.env.WP_USERNAME && process.env.WP_APP_PASSWORD),
-      gmb: Boolean((process.env.GOOGLE_GBP_ACCESS_TOKEN || process.env.GOOGLE_GBP_REFRESH_TOKEN) && process.env.GBP_ACCOUNT_ID && process.env.GBP_LOCATION_ID),
-      cloudinary: Boolean(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET),
-      smtp: Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASSWORD),
+      llm: Boolean(config.ai.openAiKey || config.ai.geminiKey),
+      wordpress: config.integrations.wordpressConfigured,
+      gmb: config.integrations.gbpConfigured,
+      cloudinary: config.integrations.cloudinaryConfigured,
+      smtp: config.integrations.smtpConfigured,
     },
   });
 }
+
+// Health remains public, but now exercises request IDs, security headers,
+// structured completion/error logging, and the shared error boundary.
+export default withApiHandler(healthHandler, { authRequired: false });

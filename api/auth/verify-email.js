@@ -1,0 +1,2 @@
+import { withApiHandler } from "../../backend/middleware/api-handler.js"; import { readJson,requireMethod,sendJson } from "../_lib/http.js"; import { verifyEmail } from "../../backend/services/auth-service.js"; import { requireDb } from "./_shared.js";
+async function handler(req,res){if(!requireMethod(req,res,["POST"]))return;const body=await readJson(req);await verifyEmail(await requireDb(),body.token);sendJson(res,200,{ok:true,message:"Email verified."});} export default withApiHandler(handler,{authRequired:false});

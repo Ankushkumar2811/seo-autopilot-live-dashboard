@@ -1,0 +1,4 @@
+export class EntityAuthorityEngine {
+  score(profile = {}) { const fields = [profile.businessName, profile.founder, profile.services?.length, profile.locations?.length, profile.socialProfiles?.length, profile.reviews?.count, profile.awards?.length, profile.publications?.length, profile.caseStudies?.length]; return Math.round(fields.filter(Boolean).length / fields.length * 100); }
+  gaps(profile = {}) { return [{ key: "founder", action: "Add a verifiable expert founder/author profile" }, { key: "socialProfiles", action: "Connect consistent official social profiles" }, { key: "reviews", action: "Build recent first-party and third-party reviews" }, { key: "caseStudies", action: "Publish evidence-rich case studies" }, { key: "publications", action: "Earn relevant industry publications and citations" }].filter((item) => !profile[item.key] || (Array.isArray(profile[item.key]) && !profile[item.key].length)); }
+}

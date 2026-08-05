@@ -197,11 +197,14 @@ ${input.title ? `Exact blog title to use: ${input.title}` : ""}
 Target keyword/topic: ${input.keyword || "local SEO"}
 ${input.extraKeywords?.length ? `Extra keywords to include naturally: ${input.extraKeywords.join(", ")}` : ""}
 Tone: practical, trustworthy, Indian market friendly.
+${input.tone ? `Brand tone: ${input.tone}` : ""}
+${input.contentBrief ? `Content brief: ${JSON.stringify({ intent: input.contentBrief.intent, audience: input.contentBrief.audience, recommendedLength: input.contentBrief.recommendedLength, outline: input.contentBrief.outline, questions: input.contentBrief.questions, ctas: input.contentBrief.ctaSuggestions })}` : ""}
 ${keywordInstruction()}
 Main brand keyword: UnnatiX. Include "UnnatiX" naturally in the introduction, service explanation, CTA, and at least one FAQ answer.
 Do not include an H1 or repeat the blog title inside the article body because WordPress already has the title field.
 Do not duplicate sections, introductions, paragraphs, or question blocks. Every section must add new information.
 Write a complete, polished, buyer-focused article with specific examples and no filler.
+Use varied sentence structure, concrete evidence, natural entity and semantic keyword coverage. Avoid keyword stuffing, generic AI-style introductions, repetitive conclusions, unsupported statistics and invented claims.
 
 Return only valid JSON:
 {

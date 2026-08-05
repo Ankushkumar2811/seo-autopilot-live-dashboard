@@ -4,8 +4,11 @@ import { missing, readJson, requireMethod, sendJson } from "./_lib/http.js";
 import { prepareBlogContent } from "./_lib/content-format.js";
 import { generateImageAsset } from "./_lib/images.js";
 import { getKeywordConfig, linkKeywordsInHtml } from "./_lib/seo-links.js";
+import { withApiHandler } from "../backend/middleware/api-handler.js";
+import { Permissions } from "../backend/security/permissions.js";
+import { tenantContext } from "../backend/middleware/tenant.js";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (!requireMethod(req, res, ["POST"])) return;
   const missingKeys = missing(["WP_SITE_URL", "WP_USERNAME", "WP_APP_PASSWORD"]);
   if (missingKeys.length) {
@@ -29,10 +32,13 @@ export default async function handler(req, res) {
 
   const db = await getDb();
   if (db) {
+    const tenant = tenantContext(req.context.identity);
     await db.collection("blogScheduleRuns").insertOne({
+      organizationId: tenant.organizationId, createdBy: tenant.userId,
       requested: items,
       results,
       createdAt: new Date(),
+      updatedAt: new Date(),
     });
   }
 
@@ -41,6 +47,8 @@ export default async function handler(req, res) {
     results,
   });
 }
+
+export default withApiHandler(handler, { authRequired: true, permission: Permissions.PUBLISH, activityAction: "wordpress_publish" });
 
 function normalizeItems(body) {
   if (Array.isArray(body.posts)) return body.posts.map(cleanItem).filter((item) => item.title);

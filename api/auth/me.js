@@ -1,0 +1,2 @@
+import { withApiHandler } from "../../backend/middleware/api-handler.js"; import { requireMethod,sendJson } from "../_lib/http.js"; import { getCurrentUser } from "../../backend/services/auth-service.js"; import { requireDb } from "./_shared.js";
+async function handler(req,res){if(!requireMethod(req,res,["GET"]))return;sendJson(res,200,{ok:true,user:await getCurrentUser(await requireDb(),req.context.identity)});} export default withApiHandler(handler,{authRequired:true});

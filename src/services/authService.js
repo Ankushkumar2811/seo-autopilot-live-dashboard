@@ -1,0 +1,2 @@
+import { api } from "./apiClient.js";
+export const authService = { me:()=>api("/api/auth/me"),login:(input)=>api("/api/auth/login",input,{skipRefresh:true}),register:(input)=>api("/api/auth/register",input,{skipRefresh:true}),logout:()=>api("/api/auth/logout",{},{skipRefresh:true}),forgotPassword:(email)=>api("/api/auth/forgot-password",{email},{skipRefresh:true}),resetPassword:(token,password)=>api("/api/auth/reset-password",{token,password},{skipRefresh:true}),verifyEmail:(token)=>api("/api/auth/verify-email",{token},{skipRefresh:true}) };

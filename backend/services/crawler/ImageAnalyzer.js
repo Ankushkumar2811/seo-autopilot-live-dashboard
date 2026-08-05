@@ -1,0 +1,3 @@
+export class ImageAnalyzer {
+  analyze(images) { const analyzed = images.map((image) => { const filename = String(image.src || "").split("/").pop()?.split("?")[0] || ""; const largeDimensions = Boolean(image.width && image.height && image.width * image.height > 4_000_000); return { ...image, missingAlt: !image.alt.trim(), filenameQuality: filename && !/^(?:img|image|dsc|photo)[-_]?\d+/i.test(filename) ? "descriptive" : "weak", largeDimensions }; }); return { images: analyzed, total: analyzed.length, missingAlt: analyzed.filter((item) => item.missingAlt).length, largeImages: analyzed.filter((item) => item.largeDimensions).length, weakFilenames: analyzed.filter((item) => item.filenameQuality === "weak").length }; }
+}

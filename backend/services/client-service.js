@@ -1,0 +1,15 @@
+import { ObjectId } from "mongodb";
+import { ValidationError } from "../lib/errors.js";
+import { tenantContext } from "../middleware/tenant.js";
+import { logActivity } from "./activity-service.js";
+
+const mapClient = (doc) => ({ id: doc._id.toString(), name: doc.businessName, businessName: doc.businessName, type: doc.category || "Local business", category: doc.category || "", city: doc.city || "", websiteUrl: doc.website || "", website: doc.website || "", services: doc.services || [], goal: (doc.goals || [])[0] || "", goals: doc.goals || [], gmbUrl: doc.googleReviewLink || "", googleReviewLink: doc.googleReviewLink || "", phone: doc.phone || "", email: doc.email || "" });
+function normalize(input) {
+  const businessName = String(input.businessName || input.name || "").trim();
+  if (businessName.length < 2) throw new ValidationError("Business name is required");
+  return { businessName, category: String(input.category || input.type || "Local business").trim(), city: String(input.city || "").trim(), website: String(input.website || input.websiteUrl || "").trim(), services: Array.isArray(input.services) ? input.services.map(String) : String(input.services || "").split(",").map((v) => v.trim()).filter(Boolean), goals: Array.isArray(input.goals) ? input.goals.map(String) : [String(input.goal || "").trim()].filter(Boolean), googleReviewLink: String(input.googleReviewLink || input.gmbUrl || "").trim(), phone: String(input.phone || "").trim(), email: String(input.email || "").trim() };
+}
+export async function listClients(db, identity) { const tenant = tenantContext(identity); return (await db.collection("clients").find({ organizationId: tenant.organizationId }).sort({ createdAt: 1 }).toArray()).map(mapClient); }
+export async function createClient(db, identity, input) { const tenant = tenantContext(identity), now = new Date(); const doc = { ...normalize(input), organizationId: tenant.organizationId, createdBy: tenant.userId, createdAt: now, updatedAt: now }; const result = await db.collection("clients").insertOne(doc); await logActivity(db, tenant, "client_created", { clientId: result.insertedId }); return mapClient({ ...doc, _id: result.insertedId }); }
+export async function updateClient(db, identity, id, input) { const tenant = tenantContext(identity); if (!ObjectId.isValid(id)) throw new ValidationError("Invalid client ID"); const result = await db.collection("clients").findOneAndUpdate({ _id: new ObjectId(id), organizationId: tenant.organizationId }, { $set: { ...normalize(input), updatedAt: new Date() } }, { returnDocument: "after" }); if (!result) throw new ValidationError("Client not found"); await logActivity(db, tenant, "client_updated", { clientId: id }); return mapClient(result); }
+export async function deleteClient(db, identity, id) { const tenant = tenantContext(identity); if (!ObjectId.isValid(id)) throw new ValidationError("Invalid client ID"); const result = await db.collection("clients").deleteOne({ _id: new ObjectId(id), organizationId: tenant.organizationId }); if (!result.deletedCount) throw new ValidationError("Client not found"); }

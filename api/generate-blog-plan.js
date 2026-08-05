@@ -2,8 +2,11 @@ import { getDb } from "./_lib/db.js";
 import { readJson, requireMethod, sendJson } from "./_lib/http.js";
 import { generateBlogPlan } from "./_lib/llm.js";
 import { getKeywordConfig } from "./_lib/seo-links.js";
+import { withApiHandler } from "../backend/middleware/api-handler.js";
+import { Permissions } from "../backend/security/permissions.js";
+import { tenantContext } from "../backend/middleware/tenant.js";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (!requireMethod(req, res, ["POST"])) return;
 
   const body = await readJson(req);
@@ -15,10 +18,13 @@ export default async function handler(req, res) {
   const result = await generateBlogPlan(input);
   const db = await getDb();
   if (db) {
+    const tenant = tenantContext(req.context.identity);
     await db.collection("blogPlanRuns").insertOne({
+      organizationId: tenant.organizationId, createdBy: tenant.userId,
       input,
       result,
       createdAt: new Date(),
+      updatedAt: new Date(),
     });
   }
 
@@ -27,6 +33,8 @@ export default async function handler(req, res) {
     ...result,
   });
 }
+
+export default withApiHandler(handler, { authRequired: true, permission: Permissions.CONTENT_GENERATE, activityAction: "blog_plan_generated" });
 
 function normalizeInput(body) {
   const keywordConfig = getKeywordConfig();

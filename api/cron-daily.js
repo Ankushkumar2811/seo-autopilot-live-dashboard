@@ -2,6 +2,9 @@ import { getDb } from "./_lib/db.js";
 import { generateSeoContent } from "./_lib/llm.js";
 import { sendJson } from "./_lib/http.js";
 import { getKeywordConfig, linkKeywordsInHtml } from "./_lib/seo-links.js";
+import { ObjectId } from "mongodb";
+import { createAgentRuntime } from "../backend/agents/runtime.js";
+import { ensureAgentIndexes } from "../backend/agents/indexes.js";
 
 export default async function handler(req, res) {
   if (req.method !== "GET" && req.method !== "POST") {
@@ -10,8 +13,9 @@ export default async function handler(req, res) {
   }
 
   const expectedSecret = process.env.CRON_SECRET;
-  const suppliedSecret = req.headers["x-cron-secret"] || req.query?.secret;
-  if (expectedSecret && suppliedSecret !== expectedSecret) {
+  const suppliedSecret = req.headers["x-cron-secret"] || String(req.headers.authorization || "").replace(/^Bearer\s+/i, "") || req.query?.secret;
+  if (!expectedSecret) return sendJson(res, 503, { ok: false, error: "cron_not_configured" });
+  if (suppliedSecret !== expectedSecret) {
     return sendJson(res, 401, { ok: false, error: "unauthorized" });
   }
 
@@ -42,6 +46,23 @@ export default async function handler(req, res) {
     }
 
     run.content = await generateSeoContent({ businessName, city, services, keyword });
+
+    const organizationId = process.env.AUTOPILOT_ORGANIZATION_ID;
+    const userId = process.env.AUTOPILOT_USER_ID;
+    if (ObjectId.isValid(organizationId) && ObjectId.isValid(userId)) {
+      const db = await getDb();
+      if (db) {
+        await ensureAgentIndexes(db);
+        const runtime = createAgentRuntime(db);
+        const workflow = await runtime.workflows.start("website-onboarding", {
+          businessName, city, services, keyword, url: websiteUrl, approved: false,
+        }, {
+          organizationId: new ObjectId(organizationId), userId: new ObjectId(userId),
+          clientId: ObjectId.isValid(process.env.AUTOPILOT_CLIENT_ID) ? new ObjectId(process.env.AUTOPILOT_CLIENT_ID) : null,
+        });
+        run.agentWorkflow = { runId: workflow.run._id, firstJobId: workflow.job._id };
+      }
+    }
 
     if (process.env.AUTO_CREATE_WP_DRAFTS === "true") {
       run.wordpressDraft = await createWordPressDraft(run.content.blog, keywords, linkUrl);

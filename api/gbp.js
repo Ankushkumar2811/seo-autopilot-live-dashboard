@@ -1,8 +1,14 @@
 import { getDb } from "./_lib/db.js";
 import { GBP_SCOPE, getGoogleAccessToken, googleRedirectUri, normalizeAccountId } from "./_lib/google-oauth.js";
 import { sendJson } from "./_lib/http.js";
+import { withApiHandler } from "../backend/middleware/api-handler.js";
+import { Permissions } from "../backend/security/permissions.js";
+import { tenantContext } from "../backend/middleware/tenant.js";
+import { encryptSecret } from "../backend/security/encryption.js";
+import crypto from "node:crypto";
+import { ObjectId } from "mongodb";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   const url = new URL(req.url, `https://${req.headers.host}`);
   const action = url.searchParams.get("action") || "locations";
 
@@ -13,6 +19,8 @@ export default async function handler(req, res) {
 
   return sendJson(res, 404, { ok: false, error: "unknown_gbp_action" });
 }
+
+export default withApiHandler(handler, { authRequired: true, permission: Permissions.PUBLISH });
 
 function sendOAuthUrl(req, res, redirect = false) {
   if (!process.env.GOOGLE_CLIENT_ID) {
@@ -27,6 +35,7 @@ function sendOAuthUrl(req, res, redirect = false) {
   url.searchParams.set("access_type", "offline");
   url.searchParams.set("prompt", "consent");
   url.searchParams.set("include_granted_scopes", "true");
+  url.searchParams.set("state", signState({ organizationId: req.context.identity.organizationId, userId: req.context.identity.userId, clientId: req.query?.clientId }));
 
   if (redirect) {
     res.statusCode = 302;
@@ -40,6 +49,8 @@ function sendOAuthUrl(req, res, redirect = false) {
 async function handleCallback(req, res, url) {
   const code = url.searchParams.get("code");
   if (!code) return sendJson(res, 400, { ok: false, error: "missing_code" });
+  const state = verifyState(url.searchParams.get("state"));
+  if (!state || state.organizationId !== String(req.context.identity.organizationId) || state.userId !== String(req.context.identity.userId)) return sendJson(res, 400, { ok: false, error: "invalid_oauth_state" });
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
     return sendJson(res, 428, { ok: false, error: "missing_google_oauth_client" });
   }
@@ -60,23 +71,28 @@ async function handleCallback(req, res, url) {
 
   const db = await getDb();
   if (db) {
+    const tenant = tenantContext(req.context.identity);
     await db.collection("googleOAuthTokens").insertOne({
+      organizationId: tenant.organizationId, createdBy: tenant.userId,
+      clientId: ObjectId.isValid(state.clientId) ? new ObjectId(state.clientId) : null,
       scope: GBP_SCOPE,
       hasRefreshToken: Boolean(token.refresh_token),
-      accessToken: token.access_token,
-      refreshToken: token.refresh_token,
+      encryptedCredentials: encryptSecret({ accessToken: token.access_token, refreshToken: token.refresh_token }),
       expiresIn: token.expires_in,
       createdAt: new Date(),
+      updatedAt: new Date(),
     });
   }
 
   sendJson(res, 200, {
     ok: true,
-    message: "Google Business Profile OAuth connected. Copy GOOGLE_GBP_REFRESH_TOKEN into Vercel env if present.",
+    message: "Google Business Profile OAuth connected securely.",
     hasRefreshToken: Boolean(token.refresh_token),
-    refreshToken: token.refresh_token || null,
   });
 }
+
+function signState(payload) { const body = Buffer.from(JSON.stringify({ ...payload, organizationId: String(payload.organizationId), userId: String(payload.userId), expiresAt: Date.now() + 10 * 60_000 })).toString("base64url"), signature = crypto.createHmac("sha256", process.env.JWT_SECRET || process.env.INTEGRATION_ENCRYPTION_KEY || "").update(body).digest("base64url"); return `${body}.${signature}`; }
+function verifyState(value) { try { const [body, signature] = String(value || "").split("."), expected = crypto.createHmac("sha256", process.env.JWT_SECRET || process.env.INTEGRATION_ENCRYPTION_KEY || "").update(body).digest(), supplied = Buffer.from(signature, "base64url"); if (supplied.length !== expected.length || !crypto.timingSafeEqual(supplied, expected)) return null; const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8")); return payload.expiresAt > Date.now() ? payload : null; } catch { return null; } }
 
 async function listLocations(req, res) {
   const account = normalizeAccountId(process.env.GBP_ACCOUNT_ID);

@@ -1,13 +1,3 @@
-import { MongoClient } from "mongodb";
-
-let clientPromise;
-
-export async function getDb() {
-  const uri = process.env.MONGO_URL;
-  if (!uri) return null;
-  if (!clientPromise) {
-    clientPromise = new MongoClient(uri).connect();
-  }
-  const client = await clientPromise;
-  return client.db(process.env.DB_NAME || "unnatix_growthx");
-}
+// Compatibility bridge: existing API handlers keep this import while the
+// connection lifecycle is owned by the scalable backend service layer.
+export { getDb, getMongoClient, checkDatabase } from "../../backend/services/database.js";

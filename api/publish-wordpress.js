@@ -1,8 +1,10 @@
 import { missing, readJson, requireMethod, sendJson } from "./_lib/http.js";
 import { prepareBlogContent } from "./_lib/content-format.js";
 import { getKeywordConfig, linkKeywordsInHtml } from "./_lib/seo-links.js";
+import { withApiHandler } from "../backend/middleware/api-handler.js";
+import { Permissions } from "../backend/security/permissions.js";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (!requireMethod(req, res, ["POST"])) return;
   const missingKeys = missing(["WP_SITE_URL", "WP_USERNAME", "WP_APP_PASSWORD"]);
   if (missingKeys.length) {
@@ -39,6 +41,8 @@ export default async function handler(req, res) {
     sendJson(res, 500, { ok: false, error: "wordpress_publish_failed", message: error.message });
   }
 }
+
+export default withApiHandler(handler, { authRequired: true, permission: Permissions.PUBLISH, activityAction: "wordpress_publish" });
 
 function ensureBrandMention(content) {
   const text = String(content || "");
