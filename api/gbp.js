@@ -72,16 +72,27 @@ async function handleCallback(req, res, url) {
   const db = await getDb();
   if (db) {
     const tenant = tenantContext(req.context.identity);
-    await db.collection("googleOAuthTokens").insertOne({
-      organizationId: tenant.organizationId, createdBy: tenant.userId,
-      clientId: ObjectId.isValid(state.clientId) ? new ObjectId(state.clientId) : null,
-      scope: GBP_SCOPE,
-      hasRefreshToken: Boolean(token.refresh_token),
-      encryptedCredentials: encryptSecret({ accessToken: token.access_token, refreshToken: token.refresh_token }),
-      expiresIn: token.expires_in,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    const clientId = ObjectId.isValid(state.clientId) ? new ObjectId(state.clientId) : null;
+    const discovery = await discoverGbp(token.access_token);
+    const now = new Date();
+    await db.collection("googleOAuthTokens").updateOne(
+      { organizationId: tenant.organizationId, clientId },
+      { $set: { scope: GBP_SCOPE, hasRefreshToken: Boolean(token.refresh_token), encryptedCredentials: encryptSecret({ accessToken: token.access_token, refreshToken: token.refresh_token }), expiresIn: token.expires_in, expiresAt: new Date(Date.now() + Number(token.expires_in || 3600) * 1000), accountId: discovery.accountId, locationId: discovery.locationId, updatedAt: now }, $setOnInsert: { organizationId: tenant.organizationId, clientId, createdBy: tenant.userId, createdAt: now } },
+      { upsert: true },
+    );
+    await db.collection("integrations").updateOne(
+      { organizationId: tenant.organizationId, provider: "google_business_profile", clientId },
+      { $set: { status: "connected", accountId: discovery.accountId, locationId: discovery.locationId, accountName: discovery.accountName, locationName: discovery.locationName, connectedAt: now, updatedAt: now }, $setOnInsert: { organizationId: tenant.organizationId, clientId, provider: "google_business_profile", createdBy: tenant.userId, createdAt: now } },
+      { upsert: true },
+    );
+    if (clientId) await db.collection("localSeoProjects").updateMany({ organizationId: tenant.organizationId, clientId }, { $set: { accountId: discovery.accountId, locationId: discovery.locationId, updatedAt: now } });
+    const target = new URL("/", `${url.protocol}//${url.host}`);
+    target.searchParams.set("gbp", "connected");
+    target.searchParams.set("accountId", discovery.accountId);
+    target.searchParams.set("locationId", discovery.locationId);
+    res.statusCode = 302;
+    res.setHeader("Location", target.toString());
+    return res.end();
   }
 
   sendJson(res, 200, {
@@ -89,6 +100,23 @@ async function handleCallback(req, res, url) {
     message: "Google Business Profile OAuth connected securely.",
     hasRefreshToken: Boolean(token.refresh_token),
   });
+}
+
+async function discoverGbp(accessToken) {
+  const headers = { Authorization: `Bearer ${accessToken}` };
+  const accountsResponse = await fetch("https://mybusinessaccountmanagement.googleapis.com/v1/accounts", { headers });
+  const accountsData = await accountsResponse.json().catch(() => ({}));
+  if (!accountsResponse.ok) throw new Error(accountsData.error?.message || `GBP accounts ${accountsResponse.status}`);
+  const account = accountsData.accounts?.[0];
+  const accountId = account?.name?.split("/").pop();
+  if (!accountId) throw new Error("No Google Business Profile account was returned for this Google user");
+  const locationsResponse = await fetch(`https://mybusinessbusinessinformation.googleapis.com/v1/accounts/${encodeURIComponent(accountId)}/locations?readMask=name,title,storefrontAddress,websiteUri,phoneNumbers,metadata`, { headers });
+  const locationsData = await locationsResponse.json().catch(() => ({}));
+  if (!locationsResponse.ok) throw new Error(locationsData.error?.message || `GBP locations ${locationsResponse.status}`);
+  const location = locationsData.locations?.[0];
+  const locationId = location?.name?.split("/").pop();
+  if (!locationId) throw new Error("No Google Business Profile location was returned for this account");
+  return { accountId, locationId, accountName: account.accountName || account.type || account.name, locationName: location.title || location.name };
 }
 
 function signState(payload) { const body = Buffer.from(JSON.stringify({ ...payload, organizationId: String(payload.organizationId), userId: String(payload.userId), expiresAt: Date.now() + 10 * 60_000 })).toString("base64url"), signature = crypto.createHmac("sha256", process.env.JWT_SECRET || process.env.INTEGRATION_ENCRYPTION_KEY || "").update(body).digest("base64url"); return `${body}.${signature}`; }
